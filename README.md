@@ -1,0 +1,1 @@
+# sh-hass-entity-status
