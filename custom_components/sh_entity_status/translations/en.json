@@ -1,0 +1,39 @@
+{
+  "title": "SH Entity Status",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up SH Entity Status",
+        "description": "Configure entity unavailability monitoring with suppression labels.",
+        "data": {
+          "title": "Integration name",
+          "ignore_label": "Ignore label name",
+          "refresh_interval": "Registry refresh interval (minutes)",
+          "poll_interval": "Unavailability poll interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "invalid_input": "Invalid input. Refresh interval must be >= 1 and poll interval >= 5."
+    },
+    "abort": {
+      "already_configured": "Integration is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SH Entity Status options",
+        "data": {
+          "title": "Integration name",
+          "ignore_label": "Ignore label name",
+          "refresh_interval": "Registry refresh interval (minutes)",
+          "poll_interval": "Unavailability poll interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "invalid_input": "Invalid input. Refresh interval must be >= 1 and poll interval >= 5."
+    }
+  }
+}
