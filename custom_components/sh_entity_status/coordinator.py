@@ -165,7 +165,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 devices[device_id] = {
                     "id": device_id,
-                    "name": dev.name or dev.name_by_user or device_id,
+                    "name": dev.name_by_user or dev.name or device_id,
                     "area_id": dev_area_id,
                     "area_name": dev_area_name,
                     "labels": dev_labels,
