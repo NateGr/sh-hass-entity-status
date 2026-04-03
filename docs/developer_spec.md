@@ -1,4 +1,4 @@
-# Developer Specification — SH Entity Status
+# Developer Specification — SmartHass Entity Status
 
 ## Development Environment Setup
 
@@ -31,11 +31,11 @@ All 15 tests should pass. The suite covers:
 ### Manual installation
 1. Copy the `custom_components/sh_entity_status/` directory into your HA config's `custom_components/` folder.
 2. Restart Home Assistant.
-3. Go to **Settings → Devices & Services → Add Integration** and search for **SH Entity Status**.
+3. Go to **Settings → Devices & Services → Add Integration** and search for **SmartHass Entity Status**.
 
 ### HACS installation
 1. Add this repository as a custom HACS repository (type: Integration).
-2. Install **SH Entity Status** via HACS.
+2. Install **SmartHass Entity Status** via HACS.
 3. Restart HA and add the integration via the UI.
 
 ---

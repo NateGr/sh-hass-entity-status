@@ -1,4 +1,4 @@
-"""Sensor platform for SH Entity Status integration."""
+"""Sensor platform for SmartHass Entity Status integration."""
 from __future__ import annotations
 
 from typing import Any
@@ -46,7 +46,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up SH Entity Status sensors from a config entry."""
+    """Set up SmartHass Entity Status sensors from a config entry."""
     coordinator: SHEntityStatusCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         [
@@ -57,7 +57,7 @@ async def async_setup_entry(
 
 
 class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorEntity):
-    """A single SH Entity Status sensor."""
+    """A single SmartHass Entity Status sensor."""
 
     def __init__(
         self,

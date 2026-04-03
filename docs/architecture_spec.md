@@ -1,8 +1,8 @@
-# Architecture Specification — SH Entity Status
+# Architecture Specification — SmartHass Entity Status
 
 ## Overview
 
-SH Entity Status is a Home Assistant custom integration that monitors entity availability across the entire HA instance and provides configurable suppression so that "expected" unavailability (e.g. a device under maintenance) doesn't pollute dashboards or automations.
+SmartHass Entity Status is a Home Assistant custom integration that monitors entity availability across the entire HA instance and provides configurable suppression so that "expected" unavailability (e.g. a device under maintenance) doesn't pollute dashboards or automations.
 
 ---
 

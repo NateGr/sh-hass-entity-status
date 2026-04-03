@@ -1,9 +1,9 @@
 {
-  "title": "SH Entity Status",
+  "title": "SmartHass Entity Status",
   "config": {
     "step": {
       "user": {
-        "title": "Set up SH Entity Status",
+        "title": "Set up SmartHass Entity Status",
         "description": "Configure entity unavailability monitoring with suppression labels.",
         "data": {
           "title": "Integration name",
@@ -17,13 +17,13 @@
       "invalid_input": "Invalid input. Refresh interval must be >= 1 and poll interval >= 5."
     },
     "abort": {
-      "already_configured": "Integration is already configured."
+      "already_configured": "SmartHass Entity Status is already configured."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "SH Entity Status options",
+        "title": "SmartHass Entity Status options",
         "data": {
           "title": "Integration name",
           "ignore_label": "Ignore label name",

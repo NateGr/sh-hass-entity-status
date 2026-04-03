@@ -1,4 +1,4 @@
-# SH Entity Status
+# SmartHass Entity Status
 
 A Home Assistant custom integration that monitors entity availability across your entire HA instance and exposes configurable **suppression** — so that "expected" unavailability (a device under maintenance, a sensor you don't care about) doesn't pollute your dashboards or trigger false alerts.
 
@@ -34,7 +34,7 @@ The two tiers are evaluated in order: entity-level first, then device-level on w
 ### Via HACS (recommended)
 1. In HACS, go to **Integrations → Custom Repositories**.
 2. Add `https://github.com/NateGr/sh-hass-entity-status` (type: Integration).
-3. Install **SH Entity Status** and restart Home Assistant.
+3. Install **SmartHass Entity Status** and restart Home Assistant.
 
 ### Manual
 1. Download or clone this repository.
@@ -45,11 +45,11 @@ The two tiers are evaluated in order: entity-level first, then device-level on w
 
 ## Configuration
 
-After installation, go to **Settings → Devices & Services → Add Integration** and search for **SH Entity Status**.
+After installation, go to **Settings → Devices & Services → Add Integration** and search for **SmartHass Entity Status**.
 
 | Field | Default | Description |
 |---|---|---|
-| Integration name | `SH Entity Status` | Display name for this entry |
+| Integration name | `SmartHass Entity Status` | Display name for this entry |
 | Ignore label name | `ignore_unavailable` | HA label slug that marks entities/devices to suppress |
 | Refresh interval (minutes) | `60` | How often to rebuild the registry hierarchy. Must be >= 1. |
 | Poll interval (seconds) | `30` | How often to check for unavailable entities. Must be >= 5. |
@@ -99,7 +99,7 @@ Same structure with `suppressed_entities` and `suppressed_devices` keys.
 |---|---|
 | `sh_entity_status.refresh_registry` | Rebuild the in-memory device/entity/label hierarchy immediately |
 | `sh_entity_status.poll_unavailable` | Immediately re-poll for unavailable entities |
-| `sh_entity_status.reload` | Reload all SH Entity Status config entries |
+| `sh_entity_status.reload` | Reload all SmartHass Entity Status config entries |
 
 ---
 

@@ -1,4 +1,4 @@
-"""Tests for the SH Entity Status config flow."""
+"""Tests for the SmartHass Entity Status config flow."""
 import pytest
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResultType, InvalidData
@@ -28,6 +28,30 @@ async def test_user_flow_success(hass):
     assert result["data"]["ignore_label"] == "ignore_unavailable"
     assert result["data"]["refresh_interval"] == 60
     assert result["data"]["poll_interval"] == 30
+
+
+async def test_user_flow_already_configured(hass):
+    """Test that a second setup attempt is aborted (single-instance enforcement)."""
+    # First setup succeeds
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            "title": "First Entry",
+            "ignore_label": "ignore_unavailable",
+            "refresh_interval": 60,
+            "poll_interval": 30,
+        },
+    )
+
+    # Second setup attempt should abort
+    result2 = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result2["type"] == FlowResultType.ABORT
+    assert result2["reason"] == "already_configured"
 
 
 async def test_user_flow_invalid_refresh_interval(hass):

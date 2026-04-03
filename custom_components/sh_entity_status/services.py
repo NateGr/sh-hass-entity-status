@@ -1,4 +1,4 @@
-"""Services for SH Entity Status integration."""
+"""Services for SmartHass Entity Status integration."""
 from __future__ import annotations
 
 from homeassistant.core import HomeAssistant, ServiceCall

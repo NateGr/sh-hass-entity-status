@@ -1,4 +1,4 @@
-"""Coordinator for SH Entity Status integration."""
+"""Coordinator for SmartHass Entity Status integration."""
 from __future__ import annotations
 
 import logging
@@ -117,7 +117,8 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         area_reg = ar.async_get(self.hass)
         label_reg = lr.async_get(self.hass)
 
-        # Build a label slug → name map for convenience
+        # Build a label_id → human-readable name map; included in entity/device dicts
+        # so callers can display friendly label names alongside raw label IDs.
         label_name_map: dict[str, str] = {
             label.label_id: label.name for label in label_reg.labels.values()
         }
@@ -128,6 +129,8 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         for entity_entry in entity_reg.entities.values():
             entity_labels = list(entity_entry.labels or [])
             entity_label_map = {slug: True for slug in entity_labels}
+            # Friendly names for labels: {label_id: label_name}
+            entity_label_names = {slug: label_name_map.get(slug, slug) for slug in entity_labels}
 
             entity_area_id = entity_entry.area_id
             entity_area_name = ""
@@ -142,6 +145,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "area_name": entity_area_name,
                 "labels": entity_labels,
                 "label_map": entity_label_map,
+                "label_names": entity_label_names,
             }
 
             if entity_entry.device_id is None:
@@ -157,6 +161,8 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 dev_labels = list(dev.labels or [])
                 dev_label_map = {slug: True for slug in dev_labels}
+                # Friendly names for device labels
+                dev_label_names = {slug: label_name_map.get(slug, slug) for slug in dev_labels}
 
                 dev_area_id = dev.area_id
                 dev_area_name = ""
@@ -165,11 +171,13 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 devices[device_id] = {
                     "id": device_id,
-                    "name": dev.name or dev.name_by_user or device_id,
+                    # Prefer user-assigned name so it matches what users see in the HA UI.
+                    "name": dev.name_by_user or dev.name or device_id,
                     "area_id": dev_area_id,
                     "area_name": dev_area_name,
                     "labels": dev_labels,
                     "label_map": dev_label_map,
+                    "label_names": dev_label_names,
                     "entities": [],
                 }
 

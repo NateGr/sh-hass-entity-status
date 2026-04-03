@@ -1,4 +1,4 @@
-"""Config flow for SH Entity Status integration."""
+"""Config flow for SmartHass Entity Status integration."""
 from __future__ import annotations
 
 import voluptuous as vol
@@ -13,6 +13,7 @@ from .const import (
     DEFAULT_POLL_INTERVAL,
     DEFAULT_REFRESH_INTERVAL,
     DOMAIN,
+    INTEGRATION_NAME,
 )
 
 
@@ -21,7 +22,7 @@ def _build_schema(defaults: dict) -> vol.Schema:
     # once HA's label registry exposes a convenient selector in config flows.
     return vol.Schema(
         {
-            vol.Required("title", default=defaults.get("title", "SH Entity Status")): str,
+            vol.Required("title", default=defaults.get("title", INTEGRATION_NAME)): str,
             vol.Required(
                 CONF_IGNORE_LABEL,
                 default=defaults.get(CONF_IGNORE_LABEL, DEFAULT_IGNORE_LABEL),
@@ -39,7 +40,7 @@ def _build_schema(defaults: dict) -> vol.Schema:
 
 
 class SHEntityStatusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle the initial config flow for SH Entity Status."""
+    """Handle the initial config flow for SmartHass Entity Status."""
 
     VERSION = 1
 
@@ -47,8 +48,12 @@ class SHEntityStatusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict | None = None
     ) -> config_entries.ConfigFlowResult:
         """Handle the user step."""
+        # Enforce a single config entry — prevents entity_id/unique_id collisions.
+        await self.async_set_unique_id(DOMAIN)
+        self._abort_if_unique_id_configured()
+
         if user_input is not None:
-            title = user_input.pop("title", "SH Entity Status")
+            title = user_input.pop("title", INTEGRATION_NAME)
             return self.async_create_entry(title=title, data=user_input)
 
         return self.async_show_form(
@@ -66,7 +71,7 @@ class SHEntityStatusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class SHEntityStatusOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for SH Entity Status."""
+    """Handle options flow for SmartHass Entity Status."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
@@ -76,12 +81,19 @@ class SHEntityStatusOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict | None = None
     ) -> config_entries.ConfigFlowResult:
         """Handle the options step."""
-        current = {**self.config_entry.data, **self.config_entry.options}
+        current = {
+            "title": self.config_entry.title,
+            **self.config_entry.data,
+            **self.config_entry.options,
+        }
 
         if user_input is not None:
             # TODO: Replace ignore_label text field with dynamic label picker
-            user_input.pop("title", None)
-            return self.async_create_entry(title="", data=user_input)
+            # once HA's label registry exposes a convenient selector in options flows.
+            title = user_input.pop("title", self.config_entry.title)
+            # Persist the new title so users can rename the integration via the options flow.
+            self.hass.config_entries.async_update_entry(self.config_entry, title=title)
+            return self.async_create_entry(title=title, data=user_input)
 
         return self.async_show_form(
             step_id="init",
