@@ -1,8 +1,8 @@
 """Services for SmartHass Entity Status integration."""
+
 from __future__ import annotations
 
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.config_entries import ConfigEntry
 
 from .const import DOMAIN
 from .coordinator import SHEntityStatusCoordinator

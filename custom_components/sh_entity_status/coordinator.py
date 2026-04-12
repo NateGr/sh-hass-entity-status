@@ -1,4 +1,5 @@
 """Coordinator for SmartHass Entity Status integration."""
+
 from __future__ import annotations
 
 import logging
@@ -13,6 +14,7 @@ from homeassistant.helpers import (
     entity_registry as er,
     label_registry as lr,
 )
+from homeassistant.helpers.label_registry import EVENT_LABEL_REGISTRY_UPDATED
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -86,6 +88,12 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._handle_registry_event,
             )
         )
+        self._event_unsubs.append(
+            self.hass.bus.async_listen(
+                EVENT_LABEL_REGISTRY_UPDATED,
+                self._handle_registry_event,
+            )
+        )
 
     async def async_teardown(self) -> None:
         """Cancel listeners and timers."""
@@ -117,21 +125,19 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         area_reg = ar.async_get(self.hass)
         label_reg = lr.async_get(self.hass)
 
-        # Build a label_id → human-readable name map; included in entity/device dicts
-        # so callers can display friendly label names alongside raw label IDs.
-        label_name_map: dict[str, str] = {
-            label.label_id: label.name for label in label_reg.labels.values()
-        }
+        # Build a list of all known label IDs from the registry.
+        all_label_ids = [label.label_id for label in label_reg.labels.values()]
 
         devices: dict[str, dict] = {}
         orphan_entities: list[dict] = []
 
         for entity_entry in entity_reg.entities.values():
             entity_labels = list(entity_entry.labels or [])
-            entity_label_map = {slug: True for slug in entity_labels}
-            # Friendly names for labels: {label_id: label_name}
-            entity_label_names = {slug: label_name_map.get(slug, slug) for slug in entity_labels}
-
+            entity_label_set = set(entity_labels)
+            # Include every known label with explicit true/false assignment state.
+            entity_label_map = {
+                label_id: label_id in entity_label_set for label_id in all_label_ids
+            }
             entity_area_id = entity_entry.area_id
             entity_area_name = ""
             if entity_area_id and entity_area_id in area_reg.areas:
@@ -139,13 +145,14 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             entity_dict = {
                 "entity_id": entity_entry.entity_id,
-                "name": entity_entry.name or entity_entry.original_name or entity_entry.entity_id,
+                "name": entity_entry.name
+                or entity_entry.original_name
+                or entity_entry.entity_id,
                 "device_id": entity_entry.device_id,
                 "area_id": entity_area_id,
                 "area_name": entity_area_name,
                 "labels": entity_labels,
                 "label_map": entity_label_map,
-                "label_names": entity_label_names,
             }
 
             if entity_entry.device_id is None:
@@ -160,10 +167,11 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     continue
 
                 dev_labels = list(dev.labels or [])
-                dev_label_map = {slug: True for slug in dev_labels}
-                # Friendly names for device labels
-                dev_label_names = {slug: label_name_map.get(slug, slug) for slug in dev_labels}
-
+                dev_label_set = set(dev_labels)
+                # Include every known label with explicit true/false assignment state.
+                dev_label_map = {
+                    label_id: label_id in dev_label_set for label_id in all_label_ids
+                }
                 dev_area_id = dev.area_id
                 dev_area_name = ""
                 if dev_area_id and dev_area_id in area_reg.areas:
@@ -177,7 +185,6 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "area_name": dev_area_name,
                     "labels": dev_labels,
                     "label_map": dev_label_map,
-                    "label_names": dev_label_names,
                     "entities": [],
                 }
 
@@ -260,7 +267,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "labels": [],
                     "label_map": {},
                 }
-            if ignore_label in ent.get("label_map", {}):
+            if ent.get("label_map", {}).get(ignore_label, False):
                 suppressed_entities.append(ent)
             else:
                 after_entity_filter.append(ent)
@@ -281,7 +288,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         for device_id, ents in by_device.items():
             device = self._devices.get(device_id)
-            if device and ignore_label in device.get("label_map", {}):
+            if device and device.get("label_map", {}).get(ignore_label, False):
                 # Suppress entire device
                 suppressed_entities.extend(ents)
                 suppressed_devices.append(device)

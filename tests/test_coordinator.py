@@ -1,4 +1,5 @@
 """Tests for the SH Entity Status coordinator suppression logic."""
+
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -13,7 +14,9 @@ def _make_state(entity_id: str, state: str = "unavailable"):
     return s
 
 
-def _make_coordinator(ignore_label="ignore_unavailable", states=None, devices=None, orphans=None):
+def _make_coordinator(
+    ignore_label="ignore_unavailable", states=None, devices=None, orphans=None
+):
     """Build a coordinator with mocked hass and pre-populated in-memory registry."""
     hass = MagicMock()
     hass.states.async_all.return_value = states or []
@@ -38,6 +41,7 @@ def _make_coordinator(ignore_label="ignore_unavailable", states=None, devices=No
 # Scenario 1: Entity with ignore label → suppressed
 # ---------------------------------------------------------------------------
 
+
 def test_entity_with_ignore_label_suppressed():
     entity = {
         "entity_id": "light.kitchen",
@@ -61,6 +65,7 @@ def test_entity_with_ignore_label_suppressed():
 # Scenario 2: Entity without ignore label → unsuppressed
 # ---------------------------------------------------------------------------
 
+
 def test_entity_without_ignore_label_unsuppressed():
     entity = {
         "entity_id": "light.living_room",
@@ -83,6 +88,7 @@ def test_entity_without_ignore_label_unsuppressed():
 # ---------------------------------------------------------------------------
 # Scenario 3: Device with ignore label → all its entities suppressed
 # ---------------------------------------------------------------------------
+
 
 def test_device_with_ignore_label_suppresses_all_entities():
     entity1 = {
@@ -128,6 +134,7 @@ def test_device_with_ignore_label_suppresses_all_entities():
 #             device still unsuppressed because other entities are unavailable
 # ---------------------------------------------------------------------------
 
+
 def test_device_without_ignore_label_entity_suppressed_device_unsuppressed():
     entity_labelled = {
         "entity_id": "sensor.labelled",
@@ -170,6 +177,7 @@ def test_device_without_ignore_label_entity_suppressed_device_unsuppressed():
 # ---------------------------------------------------------------------------
 # Scenario 5: Mixed scenario — multiple devices
 # ---------------------------------------------------------------------------
+
 
 def test_mixed_scenario():
     ent_suppressed_entity_level = {
@@ -238,6 +246,7 @@ def test_mixed_scenario():
 # Scenario 6: No unavailable entities
 # ---------------------------------------------------------------------------
 
+
 def test_no_unavailable_entities():
     coord = _make_coordinator(states=[])
     result = coord._compute_unavailable()
@@ -247,3 +256,60 @@ def test_no_unavailable_entities():
         "unsuppressed_devices": [],
         "suppressed_devices": [],
     }
+
+
+# ---------------------------------------------------------------------------
+# Scenario 7: label_map contains the ignore label with value False → NOT suppressed
+# (guards the full true/false label_map format introduced after the label registry fix)
+# ---------------------------------------------------------------------------
+
+
+def test_entity_with_label_false_not_suppressed():
+    """An entity whose label_map has ignore_label=False must NOT be suppressed."""
+    entity = {
+        "entity_id": "light.bedroom",
+        "name": "Bedroom",
+        "device_id": None,
+        "area_id": None,
+        "area_name": "",
+        "labels": [],
+        "label_map": {"ignore_unavailable": False},
+    }
+    coord = _make_coordinator(
+        states=[_make_state("light.bedroom")],
+        orphans=[entity],
+    )
+    result = coord._compute_unavailable()
+    assert result["unsuppressed_entities"] == [entity]
+    assert result["suppressed_entities"] == []
+
+
+def test_device_with_label_false_not_suppressed():
+    """A device whose label_map has ignore_label=False must NOT suppress its entities."""
+    entity = {
+        "entity_id": "sensor.motion",
+        "name": "Motion",
+        "device_id": "dev3",
+        "area_id": None,
+        "area_name": "",
+        "labels": [],
+        "label_map": {"ignore_unavailable": False},
+    }
+    device = {
+        "id": "dev3",
+        "name": "Motion Sensor",
+        "area_id": None,
+        "area_name": "",
+        "labels": [],
+        "label_map": {"ignore_unavailable": False},
+        "entities": [entity],
+    }
+    coord = _make_coordinator(
+        states=[_make_state("sensor.motion")],
+        devices={"dev3": device},
+    )
+    result = coord._compute_unavailable()
+    assert result["unsuppressed_entities"] == [entity]
+    assert device in result["unsuppressed_devices"]
+    assert result["suppressed_entities"] == []
+    assert result["suppressed_devices"] == []

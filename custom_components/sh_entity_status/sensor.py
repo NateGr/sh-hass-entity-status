@@ -1,17 +1,22 @@
 """Sensor platform for SmartHass Entity Status integration."""
+
 from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, ENTITY_ID_PREFIX
 from .coordinator import SHEntityStatusCoordinator
 
+# Sensor short names — ENTITY_ID_PREFIX is prepended at runtime so that all
+# entity_ids share a common namespace (e.g. sensor.sh_entity_status_unavailable_count).
+# To rename sensors: change the "name" value here; the prefix is controlled via
+# ENTITY_ID_PREFIX in const.py.
 _SENSOR_DESCRIPTIONS = [
     {
         "key": "unavailable_count",
@@ -71,7 +76,14 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         self._attr_name = description["name"]
         self._attr_icon = description["icon"]
         self._attr_unique_id = f"{entry.entry_id}_{DOMAIN}_{self._key}"
-        self._entry_id = entry.entry_id
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        # Explicitly stamp the entity_id so all sensors share the ENTITY_ID_PREFIX
+        # namespace regardless of what friendly name is set above.
+        self.entity_id = (
+            f"sensor.{ENTITY_ID_PREFIX}_{self._key}"
+            if ENTITY_ID_PREFIX
+            else f"sensor.{self._key}"
+        )
 
     @property
     def native_value(self) -> int:
