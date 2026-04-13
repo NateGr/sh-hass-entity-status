@@ -1,0 +1,13 @@
+{
+  "domain": "sh_entity_status",
+  "name": "SmartHass Entity Status",
+  "version": "1.0.0",
+  "config_flow": true,
+  "documentation": "https://github.com/NateGr/sh-hass-entity-status",
+  "issue_tracker": "https://github.com/NateGr/sh-hass-entity-status/issues",
+  "dependencies": [],
+  "codeowners": ["@NateGr"],
+  "requirements": [],
+  "iot_class": "local_poll",
+  "homeassistant": "2026.3.0"
+}
