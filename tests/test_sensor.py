@@ -1,5 +1,6 @@
 """Tests for SH Entity Status sensor platform."""
 
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
@@ -16,6 +17,23 @@ ENTRY_DATA = {
     "poll_interval": 30,
 }
 
+_NOW = datetime(2026, 4, 13, 10, 0, 0, tzinfo=timezone.utc)
+
+_COORDINATOR_DATA = {
+    "unsuppressed_unavailable_count": 0,
+    "suppressed_unavailable_count": 0,
+    "unsuppressed_unavailable_devices": [],
+    "suppressed_unavailable_devices": [],
+    "unsuppressed_orphaned_unavailable_entities": [],
+    "suppressed_orphaned_unavailable_entities": [],
+    "last_registry_refresh": _NOW,
+    "last_status_poll": _NOW,
+    "total_devices_count": 5,
+    "total_entities_count": 20,
+    "recent_downtime_duration": None,
+    "heartbeat": "active",
+}
+
 
 @pytest.fixture
 def config_entry() -> MockConfigEntry:
@@ -25,7 +43,7 @@ def config_entry() -> MockConfigEntry:
 async def test_sensors_created(
     hass: HomeAssistant, config_entry: MockConfigEntry
 ) -> None:
-    """Test that all four sensors are created after setup."""
+    """Test that all nine sensors are created after setup."""
     config_entry.add_to_hass(hass)
 
     with (
@@ -34,14 +52,7 @@ async def test_sensors_created(
         ),
         patch(
             "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator._async_update_data",
-            return_value={
-                "unsuppressed_unavailable_count": 0,
-                "suppressed_unavailable_count": 0,
-                "unsuppressed_unavailable_devices": [],
-                "suppressed_unavailable_devices": [],
-                "unsuppressed_orphaned_unavailable_entities": [],
-                "suppressed_orphaned_unavailable_entities": [],
-            },
+            return_value=_COORDINATOR_DATA,
         ),
     ):
         await hass.config_entries.async_setup(config_entry.entry_id)
@@ -52,6 +63,11 @@ async def test_sensors_created(
         "sensor.sh_entity_status_suppressed_unavailable_count",
         "sensor.sh_entity_status_unsuppressed_unavailable_list",
         "sensor.sh_entity_status_suppressed_unavailable_list",
+        "sensor.sh_entity_status_last_registry_refresh",
+        "sensor.sh_entity_status_last_status_poll",
+        "sensor.sh_entity_status_total_devices_entities",
+        "sensor.sh_entity_status_recent_downtime_duration",
+        "sensor.sh_entity_status_heartbeat",
     ]
     for eid in expected_entity_ids:
         state = hass.states.get(eid)
@@ -70,14 +86,7 @@ async def test_sensor_unique_ids(
         ),
         patch(
             "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator._async_update_data",
-            return_value={
-                "unsuppressed_unavailable_count": 0,
-                "suppressed_unavailable_count": 0,
-                "unsuppressed_unavailable_devices": [],
-                "suppressed_unavailable_devices": [],
-                "unsuppressed_orphaned_unavailable_entities": [],
-                "suppressed_orphaned_unavailable_entities": [],
-            },
+            return_value=_COORDINATOR_DATA,
         ),
     ):
         await hass.config_entries.async_setup(config_entry.entry_id)
@@ -91,6 +100,11 @@ async def test_sensor_unique_ids(
         "suppressed_unavailable_count",
         "unsuppressed_unavailable_list",
         "suppressed_unavailable_list",
+        "last_registry_refresh",
+        "last_status_poll",
+        "total_devices_entities",
+        "recent_downtime_duration",
+        "heartbeat",
     ]
     for key in sensor_keys:
         expected_uid = f"{config_entry.entry_id}_{DOMAIN}_{key}"
@@ -142,22 +156,28 @@ async def test_sensor_state_updates_with_coordinator_data(
         "label_map": {"ignore_unavailable": True},
     }
 
+    coordinator_data = {
+        "unsuppressed_unavailable_count": 2,
+        "suppressed_unavailable_count": 2,
+        "unsuppressed_unavailable_devices": [unsuppressed_device],
+        "suppressed_unavailable_devices": [suppressed_device],
+        "unsuppressed_orphaned_unavailable_entities": [unsuppressed_orphan_entity],
+        "suppressed_orphaned_unavailable_entities": [suppressed_orphan_entity],
+        "last_registry_refresh": _NOW,
+        "last_status_poll": _NOW,
+        "total_devices_count": 3,
+        "total_entities_count": 10,
+        "recent_downtime_duration": "1h 5m",
+        "heartbeat": "active",
+    }
+
     with (
         patch(
             "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator.async_setup"
         ),
         patch(
             "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator._async_update_data",
-            return_value={
-                "unsuppressed_unavailable_count": 2,
-                "suppressed_unavailable_count": 2,
-                "unsuppressed_unavailable_devices": [unsuppressed_device],
-                "suppressed_unavailable_devices": [suppressed_device],
-                "unsuppressed_orphaned_unavailable_entities": [
-                    unsuppressed_orphan_entity
-                ],
-                "suppressed_orphaned_unavailable_entities": [suppressed_orphan_entity],
-            },
+            return_value=coordinator_data,
         ),
     ):
         await hass.config_entries.async_setup(config_entry.entry_id)
@@ -175,3 +195,113 @@ async def test_sensor_state_updates_with_coordinator_data(
 
     state = hass.states.get("sensor.sh_entity_status_suppressed_unavailable_list")
     assert state.state == "2"
+
+    state = hass.states.get("sensor.sh_entity_status_total_devices_entities")
+    assert state.state == "13"  # 3 devices + 10 entities
+
+    state = hass.states.get("sensor.sh_entity_status_recent_downtime_duration")
+    assert state.state == "1h 5m"
+
+    state = hass.states.get("sensor.sh_entity_status_heartbeat")
+    assert state.state == "active"
+
+
+async def test_list_sensor_simplified_attributes(
+    hass: HomeAssistant, config_entry: MockConfigEntry
+) -> None:
+    """Test Item 12: list sensors expose 'devices' and 'entities' attributes."""
+    config_entry.add_to_hass(hass)
+    device = {
+        "id": "dev1",
+        "name": "My Device",
+        "area_id": None,
+        "area_name": "",
+        "labels": [],
+        "label_map": {},
+    }
+    entity = {
+        "entity_id": "input_boolean.test",
+        "name": "Test",
+        "device_id": None,
+        "area_id": None,
+        "area_name": "",
+        "labels": [],
+        "label_map": {},
+    }
+
+    coordinator_data = {
+        "unsuppressed_unavailable_count": 2,
+        "suppressed_unavailable_count": 2,
+        "unsuppressed_unavailable_devices": [device],
+        "suppressed_unavailable_devices": [device],
+        "unsuppressed_orphaned_unavailable_entities": [entity],
+        "suppressed_orphaned_unavailable_entities": [entity],
+        "last_registry_refresh": _NOW,
+        "last_status_poll": _NOW,
+        "total_devices_count": 1,
+        "total_entities_count": 1,
+        "recent_downtime_duration": None,
+        "heartbeat": "active",
+    }
+
+    with (
+        patch(
+            "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator.async_setup"
+        ),
+        patch(
+            "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator._async_update_data",
+            return_value=coordinator_data,
+        ),
+    ):
+        await hass.config_entries.async_setup(config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    # Unsuppressed list — simplified attribute names
+    state = hass.states.get("sensor.sh_entity_status_unsuppressed_unavailable_list")
+    assert state is not None
+    attrs = state.attributes
+    assert "devices" in attrs
+    assert "entities" in attrs
+    assert attrs["devices"] == [device]
+    assert attrs["entities"] == [entity]
+    # Old keys must not exist
+    assert "unsuppressed_unavailable_devices" not in attrs
+    assert "unsuppressed_orphaned_unavailable_entities" not in attrs
+
+    # Suppressed list — same simplified structure
+    state = hass.states.get("sensor.sh_entity_status_suppressed_unavailable_list")
+    assert state is not None
+    attrs = state.attributes
+    assert "devices" in attrs
+    assert "entities" in attrs
+    assert attrs["devices"] == [device]
+    assert attrs["entities"] == [entity]
+    assert "suppressed_unavailable_devices" not in attrs
+    assert "suppressed_orphaned_unavailable_entities" not in attrs
+
+
+async def test_total_devices_entities_attributes(
+    hass: HomeAssistant, config_entry: MockConfigEntry
+) -> None:
+    """Test that total_devices_entities sensor exposes per-type counts as attributes."""
+    config_entry.add_to_hass(hass)
+
+    coordinator_data = {**_COORDINATOR_DATA, "total_devices_count": 7, "total_entities_count": 42}
+
+    with (
+        patch(
+            "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator.async_setup"
+        ),
+        patch(
+            "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator._async_update_data",
+            return_value=coordinator_data,
+        ),
+    ):
+        await hass.config_entries.async_setup(config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.sh_entity_status_total_devices_entities")
+    assert state is not None
+    assert state.state == "49"  # 7 + 42
+    assert state.attributes["total_devices"] == 7
+    assert state.attributes["total_entities"] == 42

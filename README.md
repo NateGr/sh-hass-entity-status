@@ -9,7 +9,7 @@ A Home Assistant custom integration that monitors entity availability across you
 - Continuously polls all HA entities for `unavailable` state.
 - Classifies unavailable items into **unsuppressed** (needs attention) and **suppressed** (deliberately ignored) categories.
 - Tracks unavailable **devices** and **orphaned entities** (entities with no parent device, such as Helpers) separately.
-- Exposes 4 sensors so you can build automations, Lovelace cards, or notifications based on the real health of your devices.
+- Exposes 9 sensors so you can build automations, Lovelace cards, or notifications based on the real health of your devices.
 
 ### Suppression Model
 
@@ -79,11 +79,16 @@ All entity IDs are prefixed with `sh_entity_status_`. All entities appear togeth
 | `sensor.sh_entity_status_suppressed_unavailable_count` | integer | Total suppressed unavailable items (devices + orphaned entities) |
 | `sensor.sh_entity_status_unsuppressed_unavailable_list` | integer (count) | Count + full details of unsuppressed unavailable devices and orphaned entities |
 | `sensor.sh_entity_status_suppressed_unavailable_list` | integer (count) | Count + full details of suppressed unavailable devices and orphaned entities |
+| `sensor.sh_entity_status_last_registry_refresh` | timestamp | Time of the most recent registry hierarchy rebuild |
+| `sensor.sh_entity_status_last_status_poll` | timestamp | Time of the most recent unavailability poll |
+| `sensor.sh_entity_status_total_devices_entities` | integer (sum) | Total number of registered devices + entities; see attributes for individual counts |
+| `sensor.sh_entity_status_recent_downtime_duration` | string | Formatted duration of the most recently recovered entity's downtime (e.g. `2h 15m`) |
+| `sensor.sh_entity_status_heartbeat` | `active` | Integration health indicator; updated every 60 seconds |
 
 ### Attributes on `unsuppressed_unavailable_list`
 
 ```yaml
-unsuppressed_unavailable_devices:
+devices:
   - id: abc123
     name: Philips Hue Bulb
     area_id: living_room
@@ -91,7 +96,7 @@ unsuppressed_unavailable_devices:
     labels: []
     label_map:
       ignore_unavailable: false
-unsuppressed_orphaned_unavailable_entities:
+entities:
   - entity_id: input_boolean.vacation_mode
     name: Vacation Mode
     device_id: null
@@ -104,7 +109,14 @@ unsuppressed_orphaned_unavailable_entities:
 
 ### Attributes on `suppressed_unavailable_list`
 
-Same structure with `suppressed_unavailable_devices` and `suppressed_orphaned_unavailable_entities` keys.
+Same structure with `devices` and `entities` keys (the sensor **state** — `suppressed` — distinguishes the context).
+
+### Attributes on `total_devices_entities`
+
+```yaml
+total_devices: 25
+total_entities: 130
+```
 
 ---
 
@@ -153,8 +165,8 @@ automation:
 ### Template: list unsuppressed items
 
 ```yaml
-{% set devices = state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list', 'unsuppressed_unavailable_devices') or [] %}
-{% set orphans = state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list', 'unsuppressed_orphaned_unavailable_entities') or [] %}
+{% set devices = state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list', 'devices') or [] %}
+{% set orphans = state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list', 'entities') or [] %}
 Devices:
 {% for d in devices %}  - {{ d.name }} ({{ d.area_name or 'no area' }})
 {% endfor %}
