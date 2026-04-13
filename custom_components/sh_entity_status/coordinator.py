@@ -32,7 +32,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Coordinator that tracks unavailable entities with suppression logic."""
+    """Coordinator that tracks unavailable devices and orphaned entities."""
 
     def __init__(self, hass: HomeAssistant, config_entry) -> None:
         """Initialize the coordinator."""
@@ -205,25 +205,14 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     # ------------------------------------------------------------------
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Poll for unavailable entities and apply suppression logic."""
+        """Poll for unavailable entities and compute integration metrics."""
         try:
             return self._compute_unavailable()
         except Exception as exc:
             raise UpdateFailed(f"Error computing unavailable entities: {exc}") from exc
 
     def _compute_unavailable(self) -> dict[str, Any]:
-        """
-        Compute unsuppressed/suppressed unavailable entities.
-
-        Suppression precedence:
-        1. Entity-level: entity carries the ignore label → suppressed.
-        2. Device-level: after entity filter, if device carries the ignore label
-           → ALL remaining unavailable entities on that device are suppressed.
-
-        TODO: Add filter criteria (area, device class, entity type).
-        TODO: Add temporary/time-based suppression.
-        TODO: Add dynamic label picker support.
-        """
+        """Compute unavailable buckets and expose simple suppressed/unsuppressed views."""
         ignore_label = self._ignore_label
 
         # Collect all currently unavailable entity IDs
@@ -235,10 +224,12 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if not unavailable_ids:
             return {
-                "unsuppressed_entities": [],
-                "suppressed_entities": [],
-                "unsuppressed_devices": [],
-                "suppressed_devices": [],
+                "unsuppressed_unavailable_count": 0,
+                "suppressed_unavailable_count": 0,
+                "unsuppressed_unavailable_devices": [],
+                "suppressed_unavailable_devices": [],
+                "unsuppressed_orphaned_unavailable_entities": [],
+                "suppressed_orphaned_unavailable_entities": [],
             }
 
         # Build a lookup: entity_id → entity_dict
@@ -249,15 +240,15 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         for ent in self._orphan_entities:
             entity_lookup[ent["entity_id"]] = ent
 
-        unsuppressed_entities: list[dict] = []
-        suppressed_entities: list[dict] = []
+        unavailable_device_ids: set[str] = set()
+        unsuppressed_orphaned_unavailable_entities: list[dict] = []
+        suppressed_orphaned_unavailable_entities: list[dict] = []
 
-        # --- Step 1: entity-level filter ---
-        after_entity_filter: list[dict] = []
-        for eid in unavailable_ids:
+        # Collect unavailable devices and orphaned unavailable entities.
+        for eid in sorted(unavailable_ids):
             ent = entity_lookup.get(eid)
             if ent is None:
-                # Unknown entity — treat as unsuppressed orphan
+                # Unknown entity — treat as orphaned.
                 ent = {
                     "entity_id": eid,
                     "name": eid,
@@ -267,44 +258,45 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "labels": [],
                     "label_map": {},
                 }
-            if ent.get("label_map", {}).get(ignore_label, False):
-                suppressed_entities.append(ent)
+
+            device_id = ent.get("device_id")
+            if device_id and device_id in self._devices:
+                unavailable_device_ids.add(device_id)
             else:
-                after_entity_filter.append(ent)
+                if ent.get("label_map", {}).get(ignore_label, False):
+                    suppressed_orphaned_unavailable_entities.append(ent)
+                else:
+                    unsuppressed_orphaned_unavailable_entities.append(ent)
 
-        # --- Step 2: device-level filter ---
-        # Group remaining unavailable entities by device
-        by_device: dict[str, list[dict]] = {}
-        no_device: list[dict] = []
-        for ent in after_entity_filter:
-            did = ent.get("device_id")
-            if did:
-                by_device.setdefault(did, []).append(ent)
-            else:
-                no_device.append(ent)
-
-        unsuppressed_devices: list[dict] = []
-        suppressed_devices: list[dict] = []
-
-        for device_id, ents in by_device.items():
-            device = self._devices.get(device_id)
-            if device and device.get("label_map", {}).get(ignore_label, False):
-                # Suppress entire device
-                suppressed_entities.extend(ents)
-                suppressed_devices.append(device)
-            else:
-                unsuppressed_entities.extend(ents)
-                if device:
-                    unsuppressed_devices.append(device)
-
-        # Orphan entities (no device) are always unsuppressed at this stage
-        unsuppressed_entities.extend(no_device)
+        unavailable_devices = [
+            self._devices[device_id]
+            for device_id in sorted(unavailable_device_ids)
+            if device_id in self._devices
+        ]
+        suppressed_unavailable_devices = [
+            device
+            for device in unavailable_devices
+            if device.get("label_map", {}).get(ignore_label, False)
+        ]
+        unsuppressed_unavailable_devices = [
+            device
+            for device in unavailable_devices
+            if not device.get("label_map", {}).get(ignore_label, False)
+        ]
 
         return {
-            "unsuppressed_entities": unsuppressed_entities,
-            "suppressed_entities": suppressed_entities,
-            "unsuppressed_devices": unsuppressed_devices,
-            "suppressed_devices": suppressed_devices,
+            "unsuppressed_unavailable_count": len(unsuppressed_unavailable_devices)
+            + len(unsuppressed_orphaned_unavailable_entities),
+            "suppressed_unavailable_count": len(suppressed_unavailable_devices)
+            + len(suppressed_orphaned_unavailable_entities),
+            "unsuppressed_unavailable_devices": unsuppressed_unavailable_devices,
+            "suppressed_unavailable_devices": suppressed_unavailable_devices,
+            "unsuppressed_orphaned_unavailable_entities": (
+                unsuppressed_orphaned_unavailable_entities
+            ),
+            "suppressed_orphaned_unavailable_entities": (
+                suppressed_orphaned_unavailable_entities
+            ),
         }
 
     # ------------------------------------------------------------------
