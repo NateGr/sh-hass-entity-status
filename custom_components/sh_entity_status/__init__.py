@@ -1,4 +1,5 @@
 """SmartHass Entity Status custom integration."""
+
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
@@ -9,7 +10,7 @@ from .const import DOMAIN
 from .coordinator import SHEntityStatusCoordinator
 from .services import async_setup_services, async_unload_services
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.BUTTON]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

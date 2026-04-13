@@ -65,11 +65,13 @@ def test_unsuppressed_device_and_orphan_counts() -> None:
         orphans=[orphan_entity],
     )
 
+    device_without_entities = {k: v for k, v in device.items() if k != "entities"}
+
     result = coord._compute_unavailable()
 
     assert result["unsuppressed_unavailable_count"] == 2
     assert result["suppressed_unavailable_count"] == 0
-    assert result["unsuppressed_unavailable_devices"] == [device]
+    assert result["unsuppressed_unavailable_devices"] == [device_without_entities]
     assert result["suppressed_unavailable_devices"] == []
     assert result["unsuppressed_orphaned_unavailable_entities"] == [orphan_entity]
     assert result["suppressed_orphaned_unavailable_entities"] == []
@@ -114,12 +116,18 @@ def test_suppressed_device_and_orphan_counts() -> None:
         orphans=[orphan_entity],
     )
 
+    suppressed_device_without_entities = {
+        k: v for k, v in suppressed_device.items() if k != "entities"
+    }
+
     result = coord._compute_unavailable()
 
     assert result["unsuppressed_unavailable_count"] == 0
     assert result["suppressed_unavailable_count"] == 2
     assert result["unsuppressed_unavailable_devices"] == []
-    assert result["suppressed_unavailable_devices"] == [suppressed_device]
+    assert result["suppressed_unavailable_devices"] == [
+        suppressed_device_without_entities
+    ]
     assert result["unsuppressed_orphaned_unavailable_entities"] == []
     assert result["suppressed_orphaned_unavailable_entities"] == [orphan_entity]
 

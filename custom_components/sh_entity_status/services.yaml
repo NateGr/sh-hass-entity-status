@@ -1,0 +1,11 @@
+refresh_registry:
+  name: Refresh Registry
+  description: Immediately rebuilds the internal device and entity registry hierarchy. Use this after adding or removing devices/entities/labels in Home Assistant.
+
+poll_unavailable:
+  name: Poll Unavailable
+  description: Immediately re-polls all entities for unavailability, without waiting for the next scheduled interval.
+
+reload:
+  name: Reload
+  description: Reloads all SmartHass Entity Status config entries. Useful after changing configuration options.

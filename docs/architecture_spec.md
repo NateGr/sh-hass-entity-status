@@ -25,12 +25,12 @@ SmartHass Entity Status is a Home Assistant custom integration that monitors ent
 │                             │         │                         │
 │                             ▼         ▼                         │
 │              ┌──────────────────────────────────────┐           │
-│              │  CoordinatorEntity (5 sensors)        │           │
-│              │  unavailable_count                    │           │
-│              │  unsuppressed_unavailable_count        │           │
-│              │  suppressed_count                     │           │
-│              │  unavailable_list (+ attributes)      │           │
-│              │  suppressed_list  (+ attributes)      │           │
+│              │  Entities (4 sensors + 1 button)      │           │
+│              │  unsuppressed_unavailable_count       │           │
+│              │  suppressed_unavailable_count         │           │
+│              │  unsuppressed_unavailable_list        │           │
+│              │  suppressed_unavailable_list          │           │
+│              │  refresh_registry button              │           │
 │              └──────────────────────────────────────┘           │
 │                                                                 │
 │              Services: refresh_registry | poll_unavailable      │
@@ -47,7 +47,8 @@ SmartHass Entity Status is a Home Assistant custom integration that monitors ent
 | `const.py` | Single source of truth for domain slug and config key names / defaults |
 | `config_flow.py` | UI wizard for initial setup and options editing; voluptuous schema validation |
 | `coordinator.py` | Registry refresh, unavailability poll, suppression logic, event subscriptions |
-| `sensor.py` | 5 `CoordinatorEntity` sensors that read `coordinator.data` |
+| `sensor.py` | 4 `CoordinatorEntity` sensors that read `coordinator.data` |
+| `button.py` | 1 button entity for immediate registry rebuild |
 | `services.py` | Registers/unregisters 3 HA services |
 | `__init__.py` | Wires everything together: setup, teardown, platform forwarding |
 
@@ -89,22 +90,18 @@ DataUpdateCoordinator._async_update_data()   (every poll_interval seconds)
               │
               ├── hass.states.async_all() → filter state == "unavailable"
               │
-              ├── Step 1 (entity-level suppression):
-              │   for each unavailable entity:
-              │     if entity.label_map contains ignore_label → suppressed_entities
-              │     else → after_entity_filter
+              ├── map unavailable entities to either
+              │   valid device IDs or orphaned entities
               │
-              ├── Step 2 (device-level suppression):
-              │   group after_entity_filter by device_id
-              │   for each device:
-              │     if device.label_map contains ignore_label →
-              │         all device entities → suppressed_entities
-              │         device → suppressed_devices
-              │     else →
-              │         entities → unsuppressed_entities
-              │         device → unsuppressed_devices
+              ├── split devices into
+              │   unsuppressed_unavailable_devices
+              │   suppressed_unavailable_devices
               │
-              └── orphan entities (no device) → unsuppressed_entities
+              ├── split orphaned entities into
+              │   unsuppressed_orphaned_unavailable_entities
+              │   suppressed_orphaned_unavailable_entities
+              │
+              └── publish 2 category totals and 2 category lists
 ```
 
 ---
@@ -113,33 +110,47 @@ DataUpdateCoordinator._async_update_data()   (every poll_interval seconds)
 
 ```
 Unavailable entity
-        │
-        ▼
-Entity has ignore label?
-  YES ──► suppressed_entities
-  NO  ──► group by device
-              │
-              ▼
-        Device has ignore label?
-          YES ──► suppressed_entities + suppressed_devices
-          NO  ──► unsuppressed_entities + unsuppressed_devices
+                                │
+                                ▼
+Has valid parent device?
+        YES ──► device bucket
+                                                │
+                                                ▼
+                        Device has ignore label?
+                                YES ──► suppressed_unavailable_devices
+                                NO  ──► unsuppressed_unavailable_devices
+
+        NO  ──► orphan bucket
+                                                │
+                                                ▼
+                        Entity has ignore label?
+                                YES ──► suppressed_orphaned_unavailable_entities
+                                NO  ──► unsuppressed_orphaned_unavailable_entities
 ```
 
 ---
 
-## Sensor Architecture
+## Entity Architecture
 
-All 5 sensors inherit from both `CoordinatorEntity` and `SensorEntity`. They read from `coordinator.data` which is a dict with keys:
+Sensors inherit from both `CoordinatorEntity` and `SensorEntity`. The button inherits from `ButtonEntity`.
 
-- `unsuppressed_entities` — list of entity dicts
-- `suppressed_entities` — list of entity dicts
-- `unsuppressed_devices` — list of device dicts
-- `suppressed_devices` — list of device dicts
+Coordinator output keys:
 
-The `native_value` for every sensor is an integer count. The `extra_state_attributes` on `unavailable_list` and `suppressed_list` sensors expose the full entity/device detail dicts.
+- `unsuppressed_unavailable_count`
+- `suppressed_unavailable_count`
+- `unsuppressed_unavailable_devices`
+- `suppressed_unavailable_devices`
+- `unsuppressed_orphaned_unavailable_entities`
+- `suppressed_orphaned_unavailable_entities`
+
+The list sensors expose the full corresponding device and orphaned-entity collections as attributes. Device records exposed to the sensors intentionally omit child `entities` lists.
+
+All entities publish shared `DeviceInfo`, so Home Assistant groups them under one integration device page.
 
 ---
 
 ## Service Architecture
 
 Services are registered under the `sh_entity_status` domain. They iterate over all loaded config entries and call the relevant coordinator method. Services are registered once on first entry setup and removed when the last entry is unloaded.
+
+Service metadata is provided via `services.yaml` so services show names/descriptions in the HA UI.

@@ -7,8 +7,9 @@ A Home Assistant custom integration that monitors entity availability across you
 ## What It Does
 
 - Continuously polls all HA entities for `unavailable` state.
-- Classifies each unavailable entity as **unsuppressed** (needs attention) or **suppressed** (deliberately ignored).
-- Exposes 5 sensors so you can build automations, Lovelace cards, or notifications based on the real health of your devices.
+- Classifies unavailable items into **unsuppressed** (needs attention) and **suppressed** (deliberately ignored) categories.
+- Tracks unavailable **devices** and **orphaned entities** (entities with no parent device, such as Helpers) separately.
+- Exposes 4 sensors so you can build automations, Lovelace cards, or notifications based on the real health of your devices.
 
 ### Suppression Model
 
@@ -16,10 +17,12 @@ Suppression is controlled by a configurable HA **label** (default: `ignore_unava
 
 | Applied to | Effect |
 |---|---|
-| An **entity** | That entity is suppressed (even if its device is not) |
-| A **device** | All unavailable entities on that device are suppressed |
+| A **device** | That device appears in the suppressed list |
+| An **orphaned entity** | That entity appears in the suppressed list |
 
-The two tiers are evaluated in order: entity-level first, then device-level on whatever remains.
+### Orphaned Entities
+
+An entity is considered **orphaned** if it has no valid parent device — for example a Helper (`input_boolean`, `input_text`, etc.) or an entity whose device has been removed from the registry. Orphaned entities are tracked separately from device-linked entities.
 
 ---
 
@@ -58,38 +61,50 @@ All options are editable post-setup via the **Configure** button on the integrat
 
 ---
 
-## Sensors
+## Entities
+
+All entity IDs are prefixed with `sh_entity_status_`. All entities appear together under a single **SmartHass Entity Status** device in Settings → Devices & Services.
+
+### Button
+
+| Entity ID | Description |
+|---|---|
+| `button.sh_entity_status_refresh_registry` | Immediately rebuilds the internal device/entity registry hierarchy |
+
+### Sensors
 
 | Entity ID | State | Description |
 |---|---|---|
-| `sensor.unavailable_count` | integer | Total unavailable entities (suppressed + unsuppressed) |
-| `sensor.unsuppressed_unavailable_count` | integer | Unavailable entities that need attention |
-| `sensor.suppressed_count` | integer | Unavailable entities that are intentionally ignored |
-| `sensor.unavailable_list` | integer (count) | Count + full device/entity details as attributes |
-| `sensor.suppressed_list` | integer (count) | Count + full suppressed device/entity details as attributes |
+| `sensor.sh_entity_status_unsuppressed_unavailable_count` | integer | Total unsuppressed unavailable items (devices + orphaned entities) |
+| `sensor.sh_entity_status_suppressed_unavailable_count` | integer | Total suppressed unavailable items (devices + orphaned entities) |
+| `sensor.sh_entity_status_unsuppressed_unavailable_list` | integer (count) | Count + full details of unsuppressed unavailable devices and orphaned entities |
+| `sensor.sh_entity_status_suppressed_unavailable_list` | integer (count) | Count + full details of suppressed unavailable devices and orphaned entities |
 
-### Attributes on `unavailable_list`
+### Attributes on `unsuppressed_unavailable_list`
 
 ```yaml
-unsuppressed_entities:
-  - entity_id: light.living_room
-    name: Living Room
-    device_id: abc123
+unsuppressed_unavailable_devices:
+  - id: abc123
+    name: Philips Hue Bulb
     area_id: living_room
     area_name: Living Room
     labels: []
-    label_map: {}
-unsuppressed_devices:
-  - id: abc123
-    name: Philips Hue Bulb
-    area_name: Living Room
+    label_map:
+      ignore_unavailable: false
+unsuppressed_orphaned_unavailable_entities:
+  - entity_id: input_boolean.vacation_mode
+    name: Vacation Mode
+    device_id: null
+    area_id: null
+    area_name: ""
     labels: []
-    entities: [...]
+    label_map:
+      ignore_unavailable: false
 ```
 
-### Attributes on `suppressed_list`
+### Attributes on `suppressed_unavailable_list`
 
-Same structure with `suppressed_entities` and `suppressed_devices` keys.
+Same structure with `suppressed_unavailable_devices` and `suppressed_orphaned_unavailable_entities` keys.
 
 ---
 
@@ -97,23 +112,25 @@ Same structure with `suppressed_entities` and `suppressed_devices` keys.
 
 | Service | Description |
 |---|---|
-| `sh_entity_status.refresh_registry` | Rebuild the in-memory device/entity/label hierarchy immediately |
+| `sh_entity_status.refresh_registry` | Rebuild the in-memory device/entity/label hierarchy immediately (also available as a button entity) |
 | `sh_entity_status.poll_unavailable` | Immediately re-poll for unavailable entities |
 | `sh_entity_status.reload` | Reload all SmartHass Entity Status config entries |
+
+Services are also visible and callable from **Developer Tools → Actions** in the HA UI.
 
 ---
 
 ## Using Suppression Labels
 
-### Suppress a single entity
-1. Open the entity in HA.
-2. Go to **Settings** and add the label `ignore_unavailable` (or your custom label name).
-3. The entity will appear in the suppressed list on the next poll.
-
-### Suppress an entire device
+### Suppress a device
 1. Open the device in HA.
+2. Go to **Settings** and add the label `ignore_unavailable` (or your custom label name).
+3. The device will move from the unsuppressed list to the suppressed list on the next poll.
+
+### Suppress an orphaned entity
+1. Open the entity in HA.
 2. Go to **Settings** and add the label `ignore_unavailable`.
-3. All unavailable entities on that device will be suppressed.
+3. The entity will move from the unsuppressed list to the suppressed list on the next poll.
 
 ---
 
@@ -121,16 +138,29 @@ Same structure with `suppressed_entities` and `suppressed_devices` keys.
 
 ```yaml
 automation:
-  - alias: Alert on new unavailable entities
+  - alias: Alert on new unavailable items
     trigger:
       - platform: numeric_state
-        entity_id: sensor.unsuppressed_unavailable_count
+        entity_id: sensor.sh_entity_status_unsuppressed_unavailable_count
         above: 0
     action:
       - service: notify.mobile_app_my_phone
         data:
           message: >
-            {{ states('sensor.unsuppressed_unavailable_count') }} entities are unavailable.
+            {{ states('sensor.sh_entity_status_unsuppressed_unavailable_count') }} unavailable items need attention.
+```
+
+### Template: list unsuppressed items
+
+```yaml
+{% set devices = state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list', 'unsuppressed_unavailable_devices') or [] %}
+{% set orphans = state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list', 'unsuppressed_orphaned_unavailable_entities') or [] %}
+Devices:
+{% for d in devices %}  - {{ d.name }} ({{ d.area_name or 'no area' }})
+{% endfor %}
+Orphaned entities:
+{% for e in orphans %}  - {{ e.name }} ({{ e.entity_id }})
+{% endfor %}
 ```
 
 ---
