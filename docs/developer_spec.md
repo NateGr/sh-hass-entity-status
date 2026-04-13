@@ -18,10 +18,11 @@ pip install -r requirements_test.txt
 python -m pytest tests/ -v
 ```
 
-All 15 tests should pass. The suite covers:
+All tests should pass. The suite covers:
 - Config flow (success path, invalid interval validation)
-- Coordinator suppression logic (6 unit-test scenarios, no HA instance required)
+- Coordinator logic (device + orphaned entity categorization)
 - Sensor creation, unique IDs, and state updates
+- Button entity creation and press behavior
 - Services (`refresh_registry`, `poll_unavailable`)
 
 ---
@@ -48,8 +49,10 @@ custom_components/sh_entity_status/
 ├── const.py           All constants (domain slug, config keys, defaults)
 ├── config_flow.py     ConfigFlow + OptionsFlow with voluptuous schema
 ├── coordinator.py     SHEntityStatusCoordinator — registry + poll logic
-├── sensor.py          5 CoordinatorEntity sensors
+├── sensor.py          4 CoordinatorEntity sensors
+├── button.py          Refresh Registry button entity
 ├── services.py        3 HA services
+├── services.yaml      HA service metadata (name + description)
 ├── manifest.json      Integration manifest
 ├── strings.json       UI strings (source of truth)
 └── translations/
@@ -70,8 +73,11 @@ custom_components/sh_entity_status/
 ### Coordinator pattern
 The integration uses HA's `DataUpdateCoordinator` for the polling loop. The coordinator also holds the in-memory registry hierarchy (`_devices`, `_orphan_entities`). These are rebuilt independently from the poll cycle — on a longer timer (default 60 min) plus on registry change events.
 
-### Suppression is stateless
-Suppression is computed fresh on every poll. There is no persistent suppression state. This keeps the logic simple and deterministic.
+### Categorization is stateless
+Suppression/categorization is computed fresh on every poll. There is no persistent suppression state. This keeps the logic simple and deterministic.
+
+### Device page grouping
+All entities share the same `DeviceInfo.identifiers` tuple `(DOMAIN, entry.entry_id)`, which makes Home Assistant show one integration device page containing the sensors and button.
 
 ---
 
@@ -79,9 +85,11 @@ Suppression is computed fresh on every poll. There is no persistent suppression 
 
 | What to extend | Where to change |
 |---|---|
-| Add a new filter criterion (e.g. area, device class) | `coordinator.py` → `_compute_unavailable()` |
+| Add a new filter criterion (e.g. area, domain) | `coordinator.py` → `_compute_unavailable()` |
 | Add a new sensor metric | `sensor.py` → `_SENSOR_DESCRIPTIONS` + `native_value` |
+| Add a new button action | `button.py` |
 | Add a new service | `services.py` → `async_setup_services()` |
+| Document service in UI | `services.yaml` |
 | Change ignore label logic (multiple labels, ANY/ALL) | `coordinator.py` → `_compute_unavailable()` |
 | Add time-based suppression | `coordinator.py` — store suppression timestamps, check in `_compute_unavailable()` |
 | Dynamic label picker in config flow | `config_flow.py` — query `lr.async_get(hass).labels` and build a `SelectSelector` |

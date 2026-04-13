@@ -7,10 +7,11 @@ from typing import Any
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, ENTITY_ID_PREFIX
+from .const import DOMAIN, ENTITY_ID_PREFIX, INTEGRATION_NAME
 from .coordinator import SHEntityStatusCoordinator
 
 # Sensor short names — ENTITY_ID_PREFIX is prepended at runtime so that all
@@ -72,6 +73,12 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         self._attr_icon = description["icon"]
         self._attr_unique_id = f"{entry.entry_id}_{DOMAIN}_{self._key}"
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=INTEGRATION_NAME,
+            manufacturer="SmartHass",
+            model="Entity Status Monitor",
+        )
         # Explicitly stamp the entity_id so all sensors share the ENTITY_ID_PREFIX
         # namespace regardless of what friendly name is set above.
         self.entity_id = (

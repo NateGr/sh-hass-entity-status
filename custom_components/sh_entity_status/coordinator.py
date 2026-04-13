@@ -268,8 +268,11 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 else:
                     unsuppressed_orphaned_unavailable_entities.append(ent)
 
+        def _strip_entities(device: dict) -> dict:
+            return {k: v for k, v in device.items() if k != "entities"}
+
         unavailable_devices = [
-            self._devices[device_id]
+            _strip_entities(self._devices[device_id])
             for device_id in sorted(unavailable_device_ids)
             if device_id in self._devices
         ]
