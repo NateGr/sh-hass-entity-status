@@ -42,12 +42,14 @@
 - **Verbose unavailable hierarchy service/API** — add a service or API endpoint that returns the full unavailable hierarchy (devices with child entities, orphaned entities, and suppression status) for external automation tools like Node-RED.
 - **Auto-reload by label** — support reloading integrations/devices/entities that carry a configurable label (e.g. `auto_reload`), including options flow settings to enable/disable the feature, configure the label name and how long to wait before reloading the device (incase it is a temporary offline).
 - **Auto increment Manifest version to match github version** - Implement a mechanism that will auto update the manifest version to match the release version.
-
+- **Last refreshed timestamp for the registry** - Implement a date time sensor indicating the last time the registry was refreshed
 ### Medium Priority
 - **Dynamic label picker in config flow** — replace the free-text `ignore_label` field with a dropdown populated from HA's label registry at setup time.
 - **Filter by area** — limit monitoring scope to specific areas only.
 - **Filter by domain / platform** — e.g. only watch `sensor` and `binary_sensor` entities.
-- **Expose last registry refresh timestamp** in a diagnostic entity attribute.
+- **Expose UI Facing diagnostics sensors such as last registry refresh timestamp** in a diagnostic entity attribute.
+- **Better support for devices count - ignoring orphaned entitites** - Currently we have to do math and manipulation to get the devices only on the ui.
+- **Replace Unsuppressed / Suppressed Devices/Entitites attributes to just be "Entities" and "Devices"** - The sensor will be named Unsuppressed / Suppressed, this just simplifies the internal storage naming.
 
 ### Low Priority / Aspirational
 - **Custom Lovelace card** — dashboard card that visualizes suppressed vs unsuppressed unavailable items.
