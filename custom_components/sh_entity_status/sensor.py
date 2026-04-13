@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -23,21 +27,59 @@ _SENSOR_DESCRIPTIONS = [
         "key": "unsuppressed_unavailable_count",
         "name": "Unsuppressed Unavailable Count",
         "icon": "mdi:alert-circle-outline",
+        "state_class": SensorStateClass.MEASUREMENT,
     },
     {
         "key": "suppressed_unavailable_count",
         "name": "Suppressed Unavailable Count",
         "icon": "mdi:bell-off-outline",
+        "state_class": SensorStateClass.MEASUREMENT,
     },
     {
         "key": "unsuppressed_unavailable_list",
         "name": "Unsuppressed Unavailable List",
         "icon": "mdi:format-list-bulleted",
+        "state_class": SensorStateClass.MEASUREMENT,
     },
     {
         "key": "suppressed_unavailable_list",
         "name": "Suppressed Unavailable List",
         "icon": "mdi:format-list-checks",
+        "state_class": SensorStateClass.MEASUREMENT,
+    },
+    # --- Item 6: last registry refresh timestamp ---
+    {
+        "key": "last_registry_refresh",
+        "name": "Last Registry Refresh",
+        "icon": "mdi:database-refresh",
+        "device_class": SensorDeviceClass.TIMESTAMP,
+        "state_class": None,
+    },
+    # --- Item 10: additional diagnostic sensors ---
+    {
+        "key": "last_status_poll",
+        "name": "Last Status Poll",
+        "icon": "mdi:radar",
+        "device_class": SensorDeviceClass.TIMESTAMP,
+        "state_class": None,
+    },
+    {
+        "key": "total_devices_entities",
+        "name": "Total Devices Entities",
+        "icon": "mdi:counter",
+        "state_class": SensorStateClass.MEASUREMENT,
+    },
+    {
+        "key": "recent_downtime_duration",
+        "name": "Recent Downtime Duration",
+        "icon": "mdi:timer-outline",
+        "state_class": None,
+    },
+    {
+        "key": "heartbeat",
+        "name": "Heartbeat",
+        "icon": "mdi:heart-pulse",
+        "state_class": None,
     },
 ]
 
@@ -72,7 +114,9 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         self._attr_name = description["name"]
         self._attr_icon = description["icon"]
         self._attr_unique_id = f"{entry.entry_id}_{DOMAIN}_{self._key}"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_device_class = description.get("device_class")
+        state_class = description.get("state_class", SensorStateClass.MEASUREMENT)
+        self._attr_state_class = state_class
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=INTEGRATION_NAME,
@@ -88,8 +132,8 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         )
 
     @property
-    def native_value(self) -> int:
-        """Return the sensor state (always a count)."""
+    def native_value(self):
+        """Return the sensor state."""
         data = self.coordinator.data or {}
         key = self._key
 
@@ -106,28 +150,42 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
             return len(data.get("suppressed_unavailable_devices", [])) + len(
                 data.get("suppressed_orphaned_unavailable_entities", [])
             )
+        if key in ("last_registry_refresh", "last_status_poll"):
+            # Returns a datetime (or None → unknown state)
+            return data.get(key)
+        if key == "total_devices_entities":
+            return (data.get("total_devices_count", 0) or 0) + (
+                data.get("total_entities_count", 0) or 0
+            )
+        if key == "recent_downtime_duration":
+            return data.get("recent_downtime_duration")
+        if key == "heartbeat":
+            return data.get("heartbeat", "active")
         return 0
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        """Return additional attributes for list sensors."""
+        """Return additional attributes for list and diagnostic sensors."""
         data = self.coordinator.data or {}
+        # Item 12: simplified attribute keys — use 'devices' and 'entities'
+        # regardless of suppressed/unsuppressed context (state already conveys that).
         if self._key == "unsuppressed_unavailable_list":
             return {
-                "unsuppressed_unavailable_devices": data.get(
-                    "unsuppressed_unavailable_devices", []
-                ),
-                "unsuppressed_orphaned_unavailable_entities": data.get(
+                "devices": data.get("unsuppressed_unavailable_devices", []),
+                "entities": data.get(
                     "unsuppressed_orphaned_unavailable_entities", []
                 ),
             }
         if self._key == "suppressed_unavailable_list":
             return {
-                "suppressed_unavailable_devices": data.get(
-                    "suppressed_unavailable_devices", []
-                ),
-                "suppressed_orphaned_unavailable_entities": data.get(
+                "devices": data.get("suppressed_unavailable_devices", []),
+                "entities": data.get(
                     "suppressed_orphaned_unavailable_entities", []
                 ),
+            }
+        if self._key == "total_devices_entities":
+            return {
+                "total_devices": data.get("total_devices_count", 0),
+                "total_entities": data.get("total_entities_count", 0),
             }
         return None

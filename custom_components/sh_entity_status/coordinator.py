@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from homeassistant.const import STATE_UNAVAILABLE
@@ -29,6 +29,22 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+_HEARTBEAT_INTERVAL = timedelta(seconds=60)
+
+
+def _format_duration(td: timedelta) -> str:
+    """Format a timedelta as a human-readable string, e.g. '2h 15m' or '45s'."""
+    total_seconds = int(td.total_seconds())
+    if total_seconds <= 0:
+        return "0s"
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours}h {minutes}m"
+    if minutes:
+        return f"{minutes}m {seconds}s"
+    return f"{seconds}s"
 
 
 class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -56,8 +72,17 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._devices: dict[str, dict] = {}
         self._orphan_entities: list[dict] = []
 
+        # Diagnostic timestamps
+        self._last_registry_refresh: datetime | None = None
+        self._last_status_poll: datetime | None = None
+
+        # Downtime tracking: entity_id → when it first became unavailable
+        self._downtime_start: dict[str, datetime] = {}
+        self._last_downtime_duration: str | None = None
+
         # Cleanup handles
         self._registry_refresh_unsub = None
+        self._heartbeat_unsub = None
         self._event_unsubs: list = []
 
     # ------------------------------------------------------------------
@@ -73,6 +98,13 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.hass,
             self._handle_registry_refresh_interval,
             timedelta(minutes=self._refresh_interval),
+        )
+
+        # Heartbeat timer — updates independently of the poll interval
+        self._heartbeat_unsub = async_track_time_interval(
+            self.hass,
+            self._handle_heartbeat,
+            _HEARTBEAT_INTERVAL,
         )
 
         # Listen for registry changes
@@ -100,6 +132,9 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._registry_refresh_unsub is not None:
             self._registry_refresh_unsub()
             self._registry_refresh_unsub = None
+        if self._heartbeat_unsub is not None:
+            self._heartbeat_unsub()
+            self._heartbeat_unsub = None
         for unsub in self._event_unsubs:
             unsub()
         self._event_unsubs.clear()
@@ -117,6 +152,13 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _handle_registry_event(self, event: Event) -> None:
         """Triggered on entity/device registry updates."""
         self.hass.async_create_task(self._async_refresh_registry())
+
+    @callback
+    def _handle_heartbeat(self, _now: Any) -> None:
+        """Periodic heartbeat — merge updated timestamp into current coordinator data."""
+        current = dict(self.data) if self.data else {}
+        current["heartbeat"] = "active"
+        self.async_set_updated_data(current)
 
     async def _async_refresh_registry(self) -> None:
         """Rebuild the in-memory device/entity hierarchy from HA registries."""
@@ -192,6 +234,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._devices = devices
         self._orphan_entities = orphan_entities
+        self._last_registry_refresh = datetime.now(timezone.utc)
         _LOGGER.debug(
             "Registry refreshed: %d devices, %d orphan entities",
             len(devices),
@@ -207,7 +250,11 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_update_data(self) -> dict[str, Any]:
         """Poll for unavailable entities and compute integration metrics."""
         try:
-            return self._compute_unavailable()
+            result = self._compute_unavailable()
+            self._last_status_poll = datetime.now(timezone.utc)
+            result["last_registry_refresh"] = self._last_registry_refresh
+            result["last_status_poll"] = self._last_status_poll
+            return result
         except Exception as exc:
             raise UpdateFailed(f"Error computing unavailable entities: {exc}") from exc
 
@@ -222,6 +269,36 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if state.state == STATE_UNAVAILABLE
         }
 
+        # Compute total registry counts (independent of unavailability)
+        total_devices = len(self._devices)
+        total_entities = (
+            sum(len(d.get("entities", [])) for d in self._devices.values())
+            + len(self._orphan_entities)
+        )
+
+        # Update downtime tracking
+        now = datetime.now(timezone.utc)
+        # Start tracking newly unavailable entities
+        for eid in unavailable_ids:
+            if eid not in self._downtime_start:
+                self._downtime_start[eid] = now
+        # Handle recoveries — compute duration for entities that came back online
+        recovered = set(self._downtime_start.keys()) - unavailable_ids
+        if recovered:
+            max_duration = max(
+                now - self._downtime_start[eid] for eid in recovered
+            )
+            self._last_downtime_duration = _format_duration(max_duration)
+            for eid in recovered:
+                del self._downtime_start[eid]
+
+        _base = {
+            "total_devices_count": total_devices,
+            "total_entities_count": total_entities,
+            "recent_downtime_duration": self._last_downtime_duration,
+            "heartbeat": "active",
+        }
+
         if not unavailable_ids:
             return {
                 "unsuppressed_unavailable_count": 0,
@@ -230,6 +307,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "suppressed_unavailable_devices": [],
                 "unsuppressed_orphaned_unavailable_entities": [],
                 "suppressed_orphaned_unavailable_entities": [],
+                **_base,
             }
 
         # Build a lookup: entity_id → entity_dict
@@ -300,6 +378,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "suppressed_orphaned_unavailable_entities": (
                 suppressed_orphaned_unavailable_entities
             ),
+            **_base,
         }
 
     # ------------------------------------------------------------------

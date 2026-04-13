@@ -2,7 +2,11 @@
 
 from unittest.mock import MagicMock
 
-from custom_components.sh_entity_status.coordinator import SHEntityStatusCoordinator
+from custom_components.sh_entity_status.coordinator import (
+    SHEntityStatusCoordinator,
+    _format_duration,
+)
+from datetime import timedelta
 
 
 def _make_state(entity_id: str, state: str = "unavailable") -> MagicMock:
@@ -26,6 +30,8 @@ def _make_coordinator(
     coord._ignore_label = "ignore_unavailable"
     coord._devices = devices or {}
     coord._orphan_entities = orphans or []
+    coord._downtime_start = {}
+    coord._last_downtime_duration = None
     return coord
 
 
@@ -75,6 +81,10 @@ def test_unsuppressed_device_and_orphan_counts() -> None:
     assert result["suppressed_unavailable_devices"] == []
     assert result["unsuppressed_orphaned_unavailable_entities"] == [orphan_entity]
     assert result["suppressed_orphaned_unavailable_entities"] == []
+    # Diagnostic fields
+    assert result["total_devices_count"] == 1
+    assert result["total_entities_count"] == 2  # 1 device entity + 1 orphan
+    assert result["heartbeat"] == "active"
 
 
 def test_suppressed_device_and_orphan_counts() -> None:
@@ -178,11 +188,74 @@ def test_no_unavailable_entities() -> None:
 
     result = coord._compute_unavailable()
 
-    assert result == {
-        "unsuppressed_unavailable_count": 0,
-        "suppressed_unavailable_count": 0,
-        "unsuppressed_unavailable_devices": [],
-        "suppressed_unavailable_devices": [],
-        "unsuppressed_orphaned_unavailable_entities": [],
-        "suppressed_orphaned_unavailable_entities": [],
+    assert result["unsuppressed_unavailable_count"] == 0
+    assert result["suppressed_unavailable_count"] == 0
+    assert result["unsuppressed_unavailable_devices"] == []
+    assert result["suppressed_unavailable_devices"] == []
+    assert result["unsuppressed_orphaned_unavailable_entities"] == []
+    assert result["suppressed_orphaned_unavailable_entities"] == []
+    assert result["total_devices_count"] == 0
+    assert result["total_entities_count"] == 0
+    assert result["recent_downtime_duration"] is None
+    assert result["heartbeat"] == "active"
+
+
+def test_downtime_tracking_records_recovery() -> None:
+    """Downtime duration is recorded when an entity recovers."""
+    coord = _make_coordinator(states=[_make_state("sensor.flaky")])
+
+    # First poll — entity is unavailable; starts tracking
+    coord._compute_unavailable()
+    assert "sensor.flaky" in coord._downtime_start
+
+    # Second poll — entity recovered
+    coord.hass.states.async_all.return_value = []
+    coord._compute_unavailable()
+
+    assert coord._last_downtime_duration is not None
+    assert "sensor.flaky" not in coord._downtime_start
+
+
+def test_total_counts_reflect_registry() -> None:
+    """total_devices_count and total_entities_count reflect the registry."""
+    device = {
+        "id": "dev1",
+        "name": "A Device",
+        "area_id": None,
+        "area_name": "",
+        "labels": [],
+        "label_map": {},
+        "entities": [
+            {"entity_id": "sensor.a", "name": "A", "device_id": "dev1",
+             "area_id": None, "area_name": "", "labels": [], "label_map": {}},
+            {"entity_id": "sensor.b", "name": "B", "device_id": "dev1",
+             "area_id": None, "area_name": "", "labels": [], "label_map": {}},
+        ],
     }
+    orphan = {
+        "entity_id": "input_boolean.x",
+        "name": "X",
+        "device_id": None,
+        "area_id": None,
+        "area_name": "",
+        "labels": [],
+        "label_map": {},
+    }
+    coord = _make_coordinator(devices={"dev1": device}, orphans=[orphan])
+
+    result = coord._compute_unavailable()
+
+    assert result["total_devices_count"] == 1
+    assert result["total_entities_count"] == 3  # 2 device entities + 1 orphan
+
+
+def test_format_duration_seconds() -> None:
+    assert _format_duration(timedelta(seconds=45)) == "45s"
+
+
+def test_format_duration_minutes() -> None:
+    assert _format_duration(timedelta(minutes=3, seconds=20)) == "3m 20s"
+
+
+def test_format_duration_hours() -> None:
+    assert _format_duration(timedelta(hours=2, minutes=15)) == "2h 15m"
