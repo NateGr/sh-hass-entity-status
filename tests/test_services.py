@@ -1,7 +1,9 @@
 """Tests for SH Entity Status services."""
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+from unittest.mock import AsyncMock, patch
+
+from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.sh_entity_status.const import DOMAIN
@@ -15,24 +17,31 @@ ENTRY_DATA = {
 
 
 @pytest.fixture
-def config_entry():
+def config_entry() -> MockConfigEntry:
     return MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, entry_id="svc_entry_id")
 
 
-async def test_refresh_registry_service(hass, config_entry):
+async def test_refresh_registry_service(
+    hass: HomeAssistant, config_entry: MockConfigEntry
+) -> None:
     """Test that refresh_registry service triggers coordinator.async_refresh_registry."""
     config_entry.add_to_hass(hass)
 
-    with patch(
-        "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator.async_setup"
-    ), patch(
-        "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator._async_update_data",
-        return_value={
-            "unsuppressed_entities": [],
-            "suppressed_entities": [],
-            "unsuppressed_devices": [],
-            "suppressed_devices": [],
-        },
+    with (
+        patch(
+            "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator.async_setup"
+        ),
+        patch(
+            "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator._async_update_data",
+            return_value={
+                "unsuppressed_unavailable_count": 0,
+                "suppressed_unavailable_count": 0,
+                "unsuppressed_unavailable_devices": [],
+                "suppressed_unavailable_devices": [],
+                "unsuppressed_orphaned_unavailable_entities": [],
+                "suppressed_orphaned_unavailable_entities": [],
+            },
+        ),
     ):
         await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()
@@ -46,20 +55,27 @@ async def test_refresh_registry_service(hass, config_entry):
     coordinator.async_refresh_registry.assert_called_once()
 
 
-async def test_poll_unavailable_service(hass, config_entry):
+async def test_poll_unavailable_service(
+    hass: HomeAssistant, config_entry: MockConfigEntry
+) -> None:
     """Test that poll_unavailable service triggers coordinator.async_request_refresh."""
     config_entry.add_to_hass(hass)
 
-    with patch(
-        "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator.async_setup"
-    ), patch(
-        "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator._async_update_data",
-        return_value={
-            "unsuppressed_entities": [],
-            "suppressed_entities": [],
-            "unsuppressed_devices": [],
-            "suppressed_devices": [],
-        },
+    with (
+        patch(
+            "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator.async_setup"
+        ),
+        patch(
+            "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator._async_update_data",
+            return_value={
+                "unsuppressed_unavailable_count": 0,
+                "suppressed_unavailable_count": 0,
+                "unsuppressed_unavailable_devices": [],
+                "suppressed_unavailable_devices": [],
+                "unsuppressed_orphaned_unavailable_entities": [],
+                "suppressed_orphaned_unavailable_entities": [],
+            },
+        ),
     ):
         await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()

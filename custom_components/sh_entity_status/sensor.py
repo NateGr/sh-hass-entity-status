@@ -19,28 +19,23 @@ from .coordinator import SHEntityStatusCoordinator
 # ENTITY_ID_PREFIX in const.py.
 _SENSOR_DESCRIPTIONS = [
     {
-        "key": "unavailable_count",
-        "name": "Unavailable Count",
+        "key": "unsuppressed_unavailable_count",
+        "name": "Unsuppressed Unavailable Count",
         "icon": "mdi:alert-circle-outline",
     },
     {
-        "key": "unsuppressed_unavailable_count",
-        "name": "Unsuppressed Unavailable Count",
-        "icon": "mdi:alert-circle",
-    },
-    {
-        "key": "suppressed_count",
-        "name": "Suppressed Count",
+        "key": "suppressed_unavailable_count",
+        "name": "Suppressed Unavailable Count",
         "icon": "mdi:bell-off-outline",
     },
     {
-        "key": "unavailable_list",
-        "name": "Unavailable List",
+        "key": "unsuppressed_unavailable_list",
+        "name": "Unsuppressed Unavailable List",
         "icon": "mdi:format-list-bulleted",
     },
     {
-        "key": "suppressed_list",
-        "name": "Suppressed List",
+        "key": "suppressed_unavailable_list",
+        "name": "Suppressed Unavailable List",
         "icon": "mdi:format-list-checks",
     },
 ]
@@ -91,32 +86,41 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         data = self.coordinator.data or {}
         key = self._key
 
-        if key == "unavailable_count":
-            return len(data.get("unsuppressed_entities", [])) + len(
-                data.get("suppressed_entities", [])
+        if key in (
+            "unsuppressed_unavailable_count",
+            "suppressed_unavailable_count",
+        ):
+            return int(data.get(key, 0))
+        if key == "unsuppressed_unavailable_list":
+            return len(data.get("unsuppressed_unavailable_devices", [])) + len(
+                data.get("unsuppressed_orphaned_unavailable_entities", [])
             )
-        if key == "unsuppressed_unavailable_count":
-            return len(data.get("unsuppressed_entities", []))
-        if key == "suppressed_count":
-            return len(data.get("suppressed_entities", []))
-        if key == "unavailable_list":
-            return len(data.get("unsuppressed_entities", []))
-        if key == "suppressed_list":
-            return len(data.get("suppressed_entities", []))
+        if key == "suppressed_unavailable_list":
+            return len(data.get("suppressed_unavailable_devices", [])) + len(
+                data.get("suppressed_orphaned_unavailable_entities", [])
+            )
         return 0
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return additional attributes for list sensors."""
         data = self.coordinator.data or {}
-        if self._key == "unavailable_list":
+        if self._key == "unsuppressed_unavailable_list":
             return {
-                "unsuppressed_entities": data.get("unsuppressed_entities", []),
-                "unsuppressed_devices": data.get("unsuppressed_devices", []),
+                "unsuppressed_unavailable_devices": data.get(
+                    "unsuppressed_unavailable_devices", []
+                ),
+                "unsuppressed_orphaned_unavailable_entities": data.get(
+                    "unsuppressed_orphaned_unavailable_entities", []
+                ),
             }
-        if self._key == "suppressed_list":
+        if self._key == "suppressed_unavailable_list":
             return {
-                "suppressed_entities": data.get("suppressed_entities", []),
-                "suppressed_devices": data.get("suppressed_devices", []),
+                "suppressed_unavailable_devices": data.get(
+                    "suppressed_unavailable_devices", []
+                ),
+                "suppressed_orphaned_unavailable_entities": data.get(
+                    "suppressed_orphaned_unavailable_entities", []
+                ),
             }
         return None
