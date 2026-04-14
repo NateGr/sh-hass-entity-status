@@ -1,8 +1,15 @@
 # Requirements Backlog
 
-## Implemented (v1.0.2)
+## Implemented (v1.0.2 and later)
+
+### Recently Implemented Backlog Items
+
+- Added `display_name` attribute to device and entity records, formatted as `Name (Area)` if area exists, otherwise just `Name`.
+- Removed unused sensors: `total_devices_entities` and `recent_downtime_duration`.
+- Updated test cases to match new attributes and logic.
 
 ### Core Functionality
+
 - **Registry hierarchy builder** — reads HA entity/device/area/label registries and builds an in-memory hierarchy (`_devices` + `_orphan_entities`).
 - **Unavailability poll** — polls `hass.states` on a configurable interval (default 30 s) and classifies `state == "unavailable"` items.
 - **Suppression logic (current model)**:
@@ -14,6 +21,8 @@
   - `sensor.sh_entity_status_suppressed_unavailable_count`
   - `sensor.sh_entity_status_unsuppressed_unavailable_list`
   - `sensor.sh_entity_status_suppressed_unavailable_list`
+- **Added `devices_count` and `entities_count` attributes to the unavailable count sensors (suppressed and unsuppressed), providing direct access to device-only and entity-only counts for dashboards and automations.**
+- **The unavailable count sensors now use `devices_count` and `entities_count` attributes (integers), while the list sensors use `devices` and `entities` (lists), for clarity and consistency.**
 - **1 button**: `button.sh_entity_status_refresh_registry` (forces immediate registry rebuild and refresh).
 - **3 services**: `refresh_registry`, `poll_unavailable`, `reload` (with `services.yaml` metadata).
 - **Single integration device view** — entities are grouped under one virtual device via `DeviceInfo`.
@@ -37,21 +46,22 @@
 ## Backlog / Future Enhancements
 
 ### High Priority
+
 - **Temporary / time-based suppression** — allow suppression to expire after N minutes/hours, e.g. to silence a device during maintenance without permanently labelling it.
-- **Multiple ignore labels with ANY / ALL logic** — e.g. suppress if entity has *any* of a configured label set, or suppress only if it has *all* of them.
+- **Multiple ignore labels with ANY / ALL logic** — e.g. suppress if entity has _any_ of a configured label set, or suppress only if it has _all_ of them.
 - **Verbose unavailable hierarchy service/API** — add a service or API endpoint that returns the full unavailable hierarchy (devices with child entities, orphaned entities, and suppression status) for external automation tools like Node-RED.
 - **Auto-reload by label** — support reloading integrations/devices/entities that carry a configurable label (e.g. `auto_reload`), including options flow settings to enable/disable the feature, configure the label name and how long to wait before reloading the device (incase it is a temporary offline).
 - **Auto increment Manifest version to match github version** - Implement a mechanism that will auto update the manifest version to match the release version.
-- **Last refreshed timestamp for the registry** - Implement a date time sensor indicating the last time the registry was refreshed
+
 ### Medium Priority
+
 - **Dynamic label picker in config flow** — replace the free-text `ignore_label` field with a dropdown populated from HA's label registry at setup time.
 - **Filter by area** — limit monitoring scope to specific areas only.
 - **Filter by domain / platform** — e.g. only watch `sensor` and `binary_sensor` entities.
-- **Expose UI Facing diagnostics sensors such as last registry refresh timestamp** in a diagnostic entity attribute.
 - **Better support for devices count - ignoring orphaned entitites** - Currently we have to do math and manipulation to get the devices only on the ui.
-- **Replace Unsuppressed / Suppressed Devices/Entitites attributes to just be "Entities" and "Devices"** - The sensor will be named Unsuppressed / Suppressed, this just simplifies the internal storage naming.
 
 ### Low Priority / Aspirational
+
 - **Custom Lovelace card** — dashboard card that visualizes suppressed vs unsuppressed unavailable items.
 - **Notification / persistent notification on change** — fire a HA notification when the unsuppressed count increases.
 - **History / trending** — track how long entities have been unavailable.

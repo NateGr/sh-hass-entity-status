@@ -173,6 +173,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         devices: dict[str, dict] = {}
         orphan_entities: list[dict] = []
 
+
         for entity_entry in entity_reg.entities.values():
             entity_labels = list(entity_entry.labels or [])
             entity_label_set = set(entity_labels)
@@ -185,11 +186,19 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if entity_area_id and entity_area_id in area_reg.areas:
                 entity_area_name = area_reg.areas[entity_area_id].name
 
+            # Compose display_name as 'Name (Area)' if area exists, else just 'Name'
+            entity_base_name = (
+                entity_entry.name or entity_entry.original_name or entity_entry.entity_id
+            )
+            if entity_area_name:
+                display_name = f"{entity_base_name} ({entity_area_name})"
+            else:
+                display_name = entity_base_name
+
             entity_dict = {
                 "entity_id": entity_entry.entity_id,
-                "name": entity_entry.name
-                or entity_entry.original_name
-                or entity_entry.entity_id,
+                "name": entity_base_name,
+                "display_name": display_name,
                 "device_id": entity_entry.device_id,
                 "area_id": entity_area_id,
                 "area_name": entity_area_name,
@@ -219,10 +228,18 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if dev_area_id and dev_area_id in area_reg.areas:
                     dev_area_name = area_reg.areas[dev_area_id].name
 
+
+                # Compose display_name as 'Name (Area)' if area exists, else just 'Name'
+                device_base_name = dev.name_by_user or dev.name or device_id
+                if dev_area_name:
+                    device_display_name = f"{device_base_name} ({dev_area_name})"
+                else:
+                    device_display_name = device_base_name
+
                 devices[device_id] = {
                     "id": device_id,
-                    # Prefer user-assigned name so it matches what users see in the HA UI.
-                    "name": dev.name_by_user or dev.name or device_id,
+                    "name": device_base_name,
+                    "display_name": device_display_name,
                     "area_id": dev_area_id,
                     "area_name": dev_area_name,
                     "labels": dev_labels,
@@ -295,7 +312,6 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         _base = {
             "total_devices_count": total_devices,
             "total_entities_count": total_entities,
-            "recent_downtime_duration": self._last_downtime_duration,
             "heartbeat": "active",
         }
 
