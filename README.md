@@ -9,15 +9,16 @@ A Home Assistant custom integration that monitors entity availability across you
 - Continuously polls all HA entities for `unavailable` state.
 - Classifies unavailable items into **unsuppressed** (needs attention) and **suppressed** (deliberately ignored) categories.
 - Tracks unavailable **devices** and **orphaned entities** (entities with no parent device, such as Helpers) separately.
-- Exposes 9 sensors so you can build automations, Lovelace cards, or notifications based on the real health of your devices.
+- Exposes sensors for automation, dashboards, and notifications based on the real health of your devices.
+- Provides a `display_name` attribute for devices and entities, formatted as `Name (Area)` if an area exists, otherwise just `Name`.
 
 ### Suppression Model
 
 Suppression is controlled by a configurable HA **label** (default: `ignore_unavailable`).
 
-| Applied to | Effect |
-|---|---|
-| A **device** | That device appears in the suppressed list |
+| Applied to             | Effect                                     |
+| ---------------------- | ------------------------------------------ |
+| A **device**           | That device appears in the suppressed list |
 | An **orphaned entity** | That entity appears in the suppressed list |
 
 ### Orphaned Entities
@@ -35,11 +36,13 @@ An entity is considered **orphaned** if it has no valid parent device — for ex
 ## Installation
 
 ### Via HACS (recommended)
+
 1. In HACS, go to **Integrations → Custom Repositories**.
 2. Add `https://github.com/NateGr/sh-hass-entity-status` (type: Integration).
 3. Install **SmartHass Entity Status** and restart Home Assistant.
 
 ### Manual
+
 1. Download or clone this repository.
 2. Copy `custom_components/sh_entity_status/` into your HA config's `custom_components/` directory.
 3. Restart Home Assistant.
@@ -50,14 +53,22 @@ An entity is considered **orphaned** if it has no valid parent device — for ex
 
 After installation, go to **Settings → Devices & Services → Add Integration** and search for **SmartHass Entity Status**.
 
-| Field | Default | Description |
-|---|---|---|
-| Integration name | `SmartHass Entity Status` | Display name for this entry |
-| Ignore label name | `ignore_unavailable` | HA label slug that marks entities/devices to suppress |
-| Refresh interval (minutes) | `60` | How often to rebuild the registry hierarchy. Must be >= 1. |
-| Poll interval (seconds) | `30` | How often to check for unavailable entities. Must be >= 5. |
+| Field                      | Default                   | Description                                                |
+| -------------------------- | ------------------------- | ---------------------------------------------------------- |
+| Integration name           | `SmartHass Entity Status` | Display name for this entry                                |
+| Ignore label name          | `ignore_unavailable`      | HA label slug that marks entities/devices to suppress      |
+| Refresh interval (minutes) | `60`                      | How often to rebuild the registry hierarchy. Must be >= 1. |
+| Poll interval (seconds)    | `30`                      | How often to check for unavailable entities. Must be >= 5. |
 
 All options are editable post-setup via the **Configure** button on the integration card.
+
+---
+
+## Recent Changes
+
+- Added `display_name` attribute to device and entity records, formatted as `Name (Area)` if area exists, otherwise just `Name`.
+- Removed unused sensors: `total_devices_entities` and `recent_downtime_duration`.
+- Updated test cases to match new attributes and logic.
 
 ---
 
@@ -67,23 +78,39 @@ All entity IDs are prefixed with `sh_entity_status_`. All entities appear togeth
 
 ### Button
 
-| Entity ID | Description |
-|---|---|
+| Entity ID                                  | Description                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------ |
 | `button.sh_entity_status_refresh_registry` | Immediately rebuilds the internal device/entity registry hierarchy |
 
-### Sensors
+### Count Sensors
 
-| Entity ID | State | Description |
-|---|---|---|
-| `sensor.sh_entity_status_unsuppressed_unavailable_count` | integer | Total unsuppressed unavailable items (devices + orphaned entities) |
-| `sensor.sh_entity_status_suppressed_unavailable_count` | integer | Total suppressed unavailable items (devices + orphaned entities) |
-| `sensor.sh_entity_status_unsuppressed_unavailable_list` | integer (count) | Count + full details of unsuppressed unavailable devices and orphaned entities |
-| `sensor.sh_entity_status_suppressed_unavailable_list` | integer (count) | Count + full details of suppressed unavailable devices and orphaned entities |
-| `sensor.sh_entity_status_last_registry_refresh` | timestamp | Time of the most recent registry hierarchy rebuild |
-| `sensor.sh_entity_status_last_status_poll` | timestamp | Time of the most recent unavailability poll |
-| `sensor.sh_entity_status_total_devices_entities` | integer (sum) | Total number of registered devices + entities; see attributes for individual counts |
-| `sensor.sh_entity_status_recent_downtime_duration` | string | Formatted duration of the most recently recovered entity's downtime (e.g. `2h 15m`) |
-| `sensor.sh_entity_status_heartbeat` | `active` | Integration health indicator; updated every 60 seconds |
+- `sensor.sh_entity_status_unsuppressed_unavailable_count`
+- `sensor.sh_entity_status_suppressed_unavailable_count`
+
+**State:**
+
+- The total number of unavailable devices and orphaned entities (suppressed or unsuppressed).
+
+**Attributes:**
+
+- `devices_count`: Integer. The count of unavailable devices (matching suppressed/unsuppressed)
+- `entities_count`: Integer. The count of unavailable orphaned entities (matching suppressed/unsuppressed)
+
+This naming avoids confusion with the list sensors, which use `devices` and `entities` as lists.
+
+### List Sensors
+
+- `sensor.sh_entity_status_unsuppressed_unavailable_list`
+- `sensor.sh_entity_status_suppressed_unavailable_list`
+
+**State:**
+
+- The total number of unavailable devices and orphaned entities (suppressed or unsuppressed).
+
+**Attributes:**
+
+- `devices`: List of unavailable devices
+- `entities`: List of unavailable orphaned entities
 
 ### Attributes on `unsuppressed_unavailable_list`
 
@@ -122,11 +149,11 @@ total_entities: 130
 
 ## Services
 
-| Service | Description |
-|---|---|
+| Service                             | Description                                                                                         |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `sh_entity_status.refresh_registry` | Rebuild the in-memory device/entity/label hierarchy immediately (also available as a button entity) |
-| `sh_entity_status.poll_unavailable` | Immediately re-poll for unavailable entities |
-| `sh_entity_status.reload` | Reload all SmartHass Entity Status config entries |
+| `sh_entity_status.poll_unavailable` | Immediately re-poll for unavailable entities                                                        |
+| `sh_entity_status.reload`           | Reload all SmartHass Entity Status config entries                                                   |
 
 Services are also visible and callable from **Developer Tools → Actions** in the HA UI.
 
@@ -135,11 +162,13 @@ Services are also visible and callable from **Developer Tools → Actions** in t
 ## Using Suppression Labels
 
 ### Suppress a device
+
 1. Open the device in HA.
 2. Go to **Settings** and add the label `ignore_unavailable` (or your custom label name).
 3. The device will move from the unsuppressed list to the suppressed list on the next poll.
 
 ### Suppress an orphaned entity
+
 1. Open the entity in HA.
 2. Go to **Settings** and add the label `ignore_unavailable`.
 3. The entity will move from the unsuppressed list to the suppressed list on the next poll.

@@ -40,6 +40,7 @@ def test_unsuppressed_device_and_orphan_counts() -> None:
     device_entity = {
         "entity_id": "sensor.temp",
         "name": "Temp",
+        "display_name": "Temp",
         "device_id": "dev1",
         "area_id": None,
         "area_name": "",
@@ -49,6 +50,7 @@ def test_unsuppressed_device_and_orphan_counts() -> None:
     orphan_entity = {
         "entity_id": "input_boolean.helper_flag",
         "name": "Helper Flag",
+        "display_name": "Helper Flag",
         "device_id": None,
         "area_id": None,
         "area_name": "",
@@ -58,6 +60,7 @@ def test_unsuppressed_device_and_orphan_counts() -> None:
     device = {
         "id": "dev1",
         "name": "Climate Sensor",
+        "display_name": "Climate Sensor",
         "area_id": None,
         "area_name": "",
         "labels": [],
@@ -92,6 +95,7 @@ def test_suppressed_device_and_orphan_counts() -> None:
     device_entity = {
         "entity_id": "sensor.suppressed_temp",
         "name": "Suppressed Temp",
+        "display_name": "Suppressed Temp",
         "device_id": "dev_supp",
         "area_id": None,
         "area_name": "",
@@ -101,6 +105,7 @@ def test_suppressed_device_and_orphan_counts() -> None:
     orphan_entity = {
         "entity_id": "input_boolean.suppressed_helper",
         "name": "Suppressed Helper",
+        "display_name": "Suppressed Helper",
         "device_id": None,
         "area_id": None,
         "area_name": "",
@@ -110,6 +115,7 @@ def test_suppressed_device_and_orphan_counts() -> None:
     suppressed_device = {
         "id": "dev_supp",
         "name": "Ignored Device",
+        "display_name": "Ignored Device",
         "area_id": None,
         "area_name": "",
         "labels": ["ignore_unavailable"],
@@ -147,6 +153,7 @@ def test_entity_with_missing_device_treated_as_orphaned_unsuppressed() -> None:
     missing_parent = {
         "entity_id": "sensor.legacy_node",
         "name": "Legacy Node",
+        "display_name": "Legacy Node",
         "device_id": "missing_dev",
         "area_id": None,
         "area_name": "",
@@ -221,20 +228,22 @@ def test_total_counts_reflect_registry() -> None:
     device = {
         "id": "dev1",
         "name": "A Device",
+        "display_name": "A Device",
         "area_id": None,
         "area_name": "",
         "labels": [],
         "label_map": {},
         "entities": [
-            {"entity_id": "sensor.a", "name": "A", "device_id": "dev1",
+            {"entity_id": "sensor.a", "name": "A", "display_name": "A", "device_id": "dev1",
              "area_id": None, "area_name": "", "labels": [], "label_map": {}},
-            {"entity_id": "sensor.b", "name": "B", "device_id": "dev1",
+            {"entity_id": "sensor.b", "name": "B", "display_name": "B", "device_id": "dev1",
              "area_id": None, "area_name": "", "labels": [], "label_map": {}},
         ],
     }
     orphan = {
         "entity_id": "input_boolean.x",
         "name": "X",
+        "display_name": "X",
         "device_id": None,
         "area_id": None,
         "area_name": "",
@@ -259,3 +268,54 @@ def test_format_duration_minutes() -> None:
 
 def test_format_duration_hours() -> None:
     assert _format_duration(timedelta(hours=2, minutes=15)) == "2h 15m"
+
+
+def test_count_sensor_attributes_are_counts() -> None:
+    """The *_count sensors should expose devices_count and entities_count attributes as integers."""
+    device = {
+        "id": "dev1",
+        "name": "A Device",
+        "display_name": "A Device",
+        "area_id": None,
+        "area_name": "",
+        "labels": [],
+        "label_map": {},
+        "entities": [
+            {"entity_id": "sensor.a", "name": "A", "display_name": "A", "device_id": "dev1",
+             "area_id": None, "area_name": "", "labels": [], "label_map": {}},
+            {"entity_id": "sensor.b", "name": "B", "display_name": "B", "device_id": "dev1",
+             "area_id": None, "area_name": "", "labels": [], "label_map": {}},
+        ],
+    }
+    orphan = {
+        "entity_id": "input_boolean.x",
+        "name": "X",
+        "display_name": "X",
+        "device_id": None,
+        "area_id": None,
+        "area_name": "",
+        "labels": [],
+        "label_map": {},
+    }
+    from custom_components.sh_entity_status.sensor import SHEntityStatusSensor
+    from types import SimpleNamespace
+    # Simulate coordinator data
+    data = {
+        "unsuppressed_unavailable_devices": [device],
+        "unsuppressed_orphaned_unavailable_entities": [orphan],
+        "suppressed_unavailable_devices": [],
+        "suppressed_orphaned_unavailable_entities": [],
+        "unsuppressed_unavailable_count": 2,
+        "suppressed_unavailable_count": 0,
+    }
+    entry = SimpleNamespace(entry_id="test")
+    desc = {"key": "unsuppressed_unavailable_count", "name": "Unsuppressed Unavailable Count", "icon": "mdi:alert-circle-outline"}
+    sensor = SHEntityStatusSensor(SimpleNamespace(data=data), entry, desc)
+    attrs = sensor.extra_state_attributes
+    assert attrs["devices_count"] == 1
+    assert attrs["entities_count"] == 1
+    desc2 = {"key": "suppressed_unavailable_count", "name": "Suppressed Unavailable Count", "icon": "mdi:bell-off-outline"}
+    sensor2 = SHEntityStatusSensor(SimpleNamespace(data=data), entry, desc2)
+    attrs2 = sensor2.extra_state_attributes
+    assert attrs2["devices_count"] == 0
+    assert attrs2["entities_count"] == 0

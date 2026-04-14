@@ -63,18 +63,7 @@ _SENSOR_DESCRIPTIONS = [
         "device_class": SensorDeviceClass.TIMESTAMP,
         "state_class": None,
     },
-    {
-        "key": "total_devices_entities",
-        "name": "Total Devices Entities",
-        "icon": "mdi:counter",
-        "state_class": SensorStateClass.MEASUREMENT,
-    },
-    {
-        "key": "recent_downtime_duration",
-        "name": "Recent Downtime Duration",
-        "icon": "mdi:timer-outline",
-        "state_class": None,
-    },
+    # Removed total_devices_entities and recent_downtime_duration sensors
     {
         "key": "heartbeat",
         "name": "Heartbeat",
@@ -153,12 +142,7 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         if key in ("last_registry_refresh", "last_status_poll"):
             # Returns a datetime (or None → unknown state)
             return data.get(key)
-        if key == "total_devices_entities":
-            return (data.get("total_devices_count", 0) or 0) + (
-                data.get("total_entities_count", 0) or 0
-            )
-        if key == "recent_downtime_duration":
-            return data.get("recent_downtime_duration")
+        # Removed total_devices_entities and recent_downtime_duration logic
         if key == "heartbeat":
             return data.get("heartbeat", "active")
         return 0
@@ -172,20 +156,21 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         if self._key == "unsuppressed_unavailable_list":
             return {
                 "devices": data.get("unsuppressed_unavailable_devices", []),
-                "entities": data.get(
-                    "unsuppressed_orphaned_unavailable_entities", []
-                ),
+                "entities": data.get("unsuppressed_orphaned_unavailable_entities", []),
             }
         if self._key == "suppressed_unavailable_list":
             return {
                 "devices": data.get("suppressed_unavailable_devices", []),
-                "entities": data.get(
-                    "suppressed_orphaned_unavailable_entities", []
-                ),
+                "entities": data.get("suppressed_orphaned_unavailable_entities", []),
             }
-        if self._key == "total_devices_entities":
+        if self._key == "unsuppressed_unavailable_count":
             return {
-                "total_devices": data.get("total_devices_count", 0),
-                "total_entities": data.get("total_entities_count", 0),
+                "devices_count": len(data.get("unsuppressed_unavailable_devices", [])),
+                "entities_count": len(data.get("unsuppressed_orphaned_unavailable_entities", [])),
+            }
+        if self._key == "suppressed_unavailable_count":
+            return {
+                "devices_count": len(data.get("suppressed_unavailable_devices", [])),
+                "entities_count": len(data.get("suppressed_orphaned_unavailable_entities", [])),
             }
         return None
