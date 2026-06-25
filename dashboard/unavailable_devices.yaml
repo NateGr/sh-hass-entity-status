@@ -109,7 +109,7 @@ views:
               {% endfor %}
             visibility:
               - condition: numeric_state
-                entity: sensor.sh_entity_status_suppressed_unavailable_count
+                entity: sensor.sh_entity_status_unsuppressed_unavailable_count
                 above: 0
     subview: true
     max_columns: 1
