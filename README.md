@@ -218,9 +218,10 @@ Orphaned entities:
 
 ## Contributing
 
-1. Fork the repository.
-2. Install test dependencies: `pip install -r requirements_test.txt`
-3. Run tests: `python -m pytest tests/ -v`
-4. Submit a pull request against `main`.
+Contributions are welcome. Before opening a pull request, please review:
+
+- [`CONTRIBUTING.md`](.github/CONTRIBUTING.md) for setup and validation steps
+- [`CODE_OF_CONDUCT.md`](.github/CODE_OF_CONDUCT.md) for community expectations
+- [`SECURITY.md`](.github/SECURITY.md) for vulnerability reporting guidance
 
 Please ensure all tests pass and add tests for new behaviour.

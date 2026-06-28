@@ -27,12 +27,12 @@ These files must exist before the repo goes public. They signal a healthy, welco
 
 - **Action:** Create a `LICENSE` file in the root of the repository.
 - **Recommended licence:** MIT — it is the most permissive and widely accepted choice for Home Assistant custom integrations.
-- **How:** Copy the [MIT licence template](https://choosealicense.com/licenses/mit/), replace `[year]` and `[fullname]` with the current year and your name/organisation.
+- **How:** Use GitHub's standard license picker to add the MIT license in the repository root, then confirm the copyright holder details are correct.
 - **Why it matters:** Without a licence, the code is legally "all rights reserved" even if publicly visible. A licence is required before accepting any contributions.
 
 ### 1.2 Add a SECURITY policy
 
-- **Action:** Create `.github/SECURITY.md`.
+- **Action:** Create `.github/SECURITY.md` using GitHub's standard security policy structure.
 - **Contents to include:**
   - Supported versions (which versions receive security fixes).
   - Instructions for reporting a vulnerability privately (e.g. via GitHub's [private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing/privately-reporting-a-security-vulnerability) feature, or a dedicated email).
@@ -41,13 +41,13 @@ These files must exist before the repo goes public. They signal a healthy, welco
 
 ### 1.3 Add a CODE_OF_CONDUCT
 
-- **Action:** Create `.github/CODE_OF_CONDUCT.md`.
+- **Action:** Create `.github/CODE_OF_CONDUCT.md` using GitHub's standard Contributor Covenant flow.
 - **Recommended standard:** [Contributor Covenant v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/) — industry standard, widely recognised.
 - **Why it matters:** Sets behavioural expectations and makes the project welcoming to all contributors.
 
 ### 1.4 Expand CONTRIBUTING guide
 
-- **Action:** Create `.github/CONTRIBUTING.md` (moves the brief section in `README.md` to its own dedicated file and expands it).
+- **Action:** Create `.github/CONTRIBUTING.md` using GitHub's standard contributing-guide location and keep repo-specific additions limited to setup, validation, and pull-request expectations.
 - **Contents to include:**
   - How to set up a local development environment (Python version, virtual env, `pip install -r requirements_test.txt`).
   - How to run the test suite (`python -m pytest tests/ -v`).
@@ -59,7 +59,7 @@ These files must exist before the repo goes public. They signal a healthy, welco
 
 ### 1.5 Add GitHub Issue Templates
 
-- **Action:** Create `.github/ISSUE_TEMPLATE/` directory with the following templates:
+- **Action:** Create `.github/ISSUE_TEMPLATE/` using standard GitHub issue forms/templates:
   - `bug_report.yml` — structured bug report: HA version, integration version, steps to reproduce, expected vs actual behaviour, logs.
   - `feature_request.yml` — structured feature request: problem statement, proposed solution, alternatives considered.
   - `config.yml` — disables blank issues and adds a link to documentation.
@@ -67,7 +67,7 @@ These files must exist before the repo goes public. They signal a healthy, welco
 
 ### 1.6 Add a Pull Request Template
 
-- **Action:** Create `.github/pull_request_template.md`.
+- **Action:** Create `.github/pull_request_template.md` using the standard GitHub pull request template location and format.
 - **Contents to include:**
   - Summary of changes.
   - Related issue number (`Closes #NNN`).
@@ -455,10 +455,10 @@ Use this as your go-to task list. Items are ordered roughly by priority.
 
 ### Immediate (before making repo public)
 
-- [ ] Add `LICENSE` (MIT recommended) to the repository root.
-- [ ] Create `.github/SECURITY.md` with vulnerability reporting instructions.
-- [ ] Create `.github/CODE_OF_CONDUCT.md` (Contributor Covenant v2.1).
-- [ ] Create `.github/CONTRIBUTING.md` with local setup, test, and lint instructions.
+- [ ] Add `LICENSE` using a standard GitHub-supported license template (MIT recommended).
+- [ ] Create `.github/SECURITY.md` using the standard GitHub security policy structure.
+- [ ] Create `.github/CODE_OF_CONDUCT.md` with GitHub's default Contributor Covenant flow.
+- [ ] Create `.github/CONTRIBUTING.md` with local setup, test, and lint instructions in the standard GitHub location.
 - [ ] Create `.github/ISSUE_TEMPLATE/bug_report.yml`.
 - [ ] Create `.github/ISSUE_TEMPLATE/feature_request.yml`.
 - [ ] Create `.github/ISSUE_TEMPLATE/config.yml`.
