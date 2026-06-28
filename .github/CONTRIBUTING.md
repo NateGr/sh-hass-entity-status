@@ -21,7 +21,6 @@ Run the same checks used in GitHub Actions before opening a pull request.
 
 ```bash
 ruff check .
-ruff format --check .
 python -m pytest tests/ -v
 ```
 
