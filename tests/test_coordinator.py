@@ -203,7 +203,6 @@ def test_no_unavailable_entities() -> None:
     assert result["suppressed_orphaned_unavailable_entities"] == []
     assert result["total_devices_count"] == 0
     assert result["total_entities_count"] == 0
-    assert result["recent_downtime_duration"] is None
     assert result["heartbeat"] == "active"
 
 

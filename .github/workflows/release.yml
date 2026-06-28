@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify manifest version matches tag
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          tag = os.environ['GITHUB_REF_NAME']
+          version = tag.removeprefix('v')
+          manifest = json.loads(Path('custom_components/sh_entity_status/manifest.json').read_text())
+          if manifest['version'] != version:
+              raise SystemExit(
+                  f"Tag version {version} does not match manifest version {manifest['version']}"
+              )
+          PY
+
+      - name: Build release archive
+        run: zip -r sh_entity_status.zip custom_components/sh_entity_status hacs.json README.md LICENSE CHANGELOG.md
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sh_entity_status.zip
+          generate_release_notes: true

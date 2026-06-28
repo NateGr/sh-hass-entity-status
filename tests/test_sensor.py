@@ -30,7 +30,6 @@ _COORDINATOR_DATA = {
     "last_status_poll": _NOW,
     "total_devices_count": 5,
     "total_entities_count": 20,
-    "recent_downtime_duration": None,
     "heartbeat": "active",
 }
 
@@ -43,7 +42,7 @@ def config_entry() -> MockConfigEntry:
 async def test_sensors_created(
     hass: HomeAssistant, config_entry: MockConfigEntry
 ) -> None:
-    """Test that all nine sensors are created after setup."""
+    """Test that the current sensors are created after setup."""
     config_entry.add_to_hass(hass)
 
     with (
@@ -65,8 +64,6 @@ async def test_sensors_created(
         "sensor.sh_entity_status_suppressed_unavailable_list",
         "sensor.sh_entity_status_last_registry_refresh",
         "sensor.sh_entity_status_last_status_poll",
-        "sensor.sh_entity_status_total_devices_entities",
-        "sensor.sh_entity_status_recent_downtime_duration",
         "sensor.sh_entity_status_heartbeat",
     ]
     for eid in expected_entity_ids:
@@ -102,8 +99,6 @@ async def test_sensor_unique_ids(
         "suppressed_unavailable_list",
         "last_registry_refresh",
         "last_status_poll",
-        "total_devices_entities",
-        "recent_downtime_duration",
         "heartbeat",
     ]
     for key in sensor_keys:
@@ -167,7 +162,6 @@ async def test_sensor_state_updates_with_coordinator_data(
         "last_status_poll": _NOW,
         "total_devices_count": 3,
         "total_entities_count": 10,
-        "recent_downtime_duration": "1h 5m",
         "heartbeat": "active",
     }
 
@@ -195,12 +189,6 @@ async def test_sensor_state_updates_with_coordinator_data(
 
     state = hass.states.get("sensor.sh_entity_status_suppressed_unavailable_list")
     assert state.state == "2"
-
-    state = hass.states.get("sensor.sh_entity_status_total_devices_entities")
-    assert state.state == "13"  # 3 devices + 10 entities
-
-    state = hass.states.get("sensor.sh_entity_status_recent_downtime_duration")
-    assert state.state == "1h 5m"
 
     state = hass.states.get("sensor.sh_entity_status_heartbeat")
     assert state.state == "active"
@@ -278,30 +266,3 @@ async def test_list_sensor_simplified_attributes(
     assert attrs["entities"] == [entity]
     assert "suppressed_unavailable_devices" not in attrs
     assert "suppressed_orphaned_unavailable_entities" not in attrs
-
-
-async def test_total_devices_entities_attributes(
-    hass: HomeAssistant, config_entry: MockConfigEntry
-) -> None:
-    """Test that total_devices_entities sensor exposes per-type counts as attributes."""
-    config_entry.add_to_hass(hass)
-
-    coordinator_data = {**_COORDINATOR_DATA, "total_devices_count": 7, "total_entities_count": 42}
-
-    with (
-        patch(
-            "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator.async_setup"
-        ),
-        patch(
-            "custom_components.sh_entity_status.coordinator.SHEntityStatusCoordinator._async_update_data",
-            return_value=coordinator_data,
-        ),
-    ):
-        await hass.config_entries.async_setup(config_entry.entry_id)
-        await hass.async_block_till_done()
-
-    state = hass.states.get("sensor.sh_entity_status_total_devices_entities")
-    assert state is not None
-    assert state.state == "49"  # 7 + 42
-    assert state.attributes["total_devices"] == 7
-    assert state.attributes["total_entities"] == 42
