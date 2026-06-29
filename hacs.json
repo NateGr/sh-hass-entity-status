@@ -1,6 +1,5 @@
 {
   "name": "SH Entity Status",
   "content_in_root": false,
-  "filename": "sh_entity_status.zip",
   "homeassistant": "2026.3.0"
 }
