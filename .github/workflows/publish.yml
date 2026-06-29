@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g. 1.2.3)'
-        required: true
+        description: 'Version to release (e.g. 1.2.3) — leave blank to auto-increment patch'
+        required: false
+        default: ''
 
 jobs:
   ci:
@@ -44,9 +45,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve version
+        id: resolve_version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            CURRENT=$(jq -r '.version' custom_components/sh_entity_status/manifest.json)
+            MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+            MINOR=$(echo "$CURRENT" | cut -d. -f2)
+            PATCH=$(echo "$CURRENT" | cut -d. -f3)
+            VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Bump version in manifest.json
         env:
-          VERSION: ${{ github.event.inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.VERSION }}
         run: |
           jq --arg v "$VERSION" '.version = $v' \
             custom_components/sh_entity_status/manifest.json \
@@ -55,7 +72,7 @@ jobs:
 
       - name: Commit version bump
         env:
-          VERSION: ${{ github.event.inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.VERSION }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -65,20 +82,20 @@ jobs:
 
       - name: Create and push tag
         env:
-          VERSION: ${{ github.event.inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.VERSION }}
         run: |
           git tag "v$VERSION"
           git push origin "v$VERSION"
 
       - name: Build release archive
         env:
-          VERSION: ${{ github.event.inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.VERSION }}
         run: zip -r "sh_entity_status_v${VERSION}.zip" custom_components/sh_entity_status hacs.json README.md LICENSE CHANGELOG.md
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.event.inputs.version }}
-          name: v${{ github.event.inputs.version }}
-          files: sh_entity_status_v${{ github.event.inputs.version }}.zip
+          tag_name: v${{ steps.resolve_version.outputs.VERSION }}
+          name: v${{ steps.resolve_version.outputs.VERSION }}
+          files: sh_entity_status_v${{ steps.resolve_version.outputs.VERSION }}.zip
           generate_release_notes: true
