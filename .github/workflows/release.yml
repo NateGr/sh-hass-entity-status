@@ -56,7 +56,7 @@ jobs:
         run: zip -r sh_entity_status.zip custom_components/sh_entity_status hacs.json README.md LICENSE CHANGELOG.md
 
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: sh_entity_status.zip
           generate_release_notes: true

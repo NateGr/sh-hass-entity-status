@@ -109,7 +109,7 @@ jobs:
         run: zip -r "sh_entity_status_v${VERSION}.zip" custom_components/sh_entity_status hacs.json README.md LICENSE CHANGELOG.md
 
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.resolve_version.outputs.VERSION }}
           name: v${{ steps.resolve_version.outputs.VERSION }}
