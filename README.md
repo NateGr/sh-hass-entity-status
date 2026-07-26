@@ -1,5 +1,10 @@
 # SmartHass Entity Status
 
+[![HACS Badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![CI](https://github.com/NateGr/sh-hass-entity-status/actions/workflows/ci.yml/badge.svg)](https://github.com/NateGr/sh-hass-entity-status/actions/workflows/ci.yml)
+[![GitHub Release](https://img.shields.io/github/release/NateGr/sh-hass-entity-status.svg?style=flat-square)](https://github.com/NateGr/sh-hass-entity-status/releases)
+[![License](https://img.shields.io/github/license/NateGr/sh-hass-entity-status)](LICENSE)
+
 A Home Assistant custom integration that monitors entity availability across your entire HA instance and exposes configurable **suppression** — so that "expected" unavailability (a device under maintenance, a sensor you don't care about) doesn't pollute your dashboards or trigger false alerts.
 
 ---

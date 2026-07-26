@@ -14,6 +14,10 @@ on:
 jobs:
   hacs:
     runs-on: ubuntu-latest
+    # HACS requires public repositories; skip validation until the repo is made public.
+    # Before publishing, also ensure the repository has a description and at least one topic
+    # (e.g. "homeassistant") configured in the GitHub repository settings.
+    if: ${{ !github.event.repository.private }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
