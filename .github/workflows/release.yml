@@ -21,6 +21,7 @@ jobs:
 
   release:
     needs: hacs
+    if: ${{ always() && (needs.hacs.result == 'success' || needs.hacs.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
