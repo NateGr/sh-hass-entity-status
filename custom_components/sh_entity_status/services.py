@@ -13,13 +13,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def _refresh_registry(call: ServiceCall) -> None:
         """Refresh the internal registry hierarchy."""
-        for entry_id, coordinator in hass.data.get(DOMAIN, {}).items():
+        for coordinator in hass.data.get(DOMAIN, {}).values():
             if isinstance(coordinator, SHEntityStatusCoordinator):
                 await coordinator.async_refresh_registry()
 
     async def _poll_unavailable(call: ServiceCall) -> None:
         """Immediately poll for unavailable entities."""
-        for entry_id, coordinator in hass.data.get(DOMAIN, {}).items():
+        for coordinator in hass.data.get(DOMAIN, {}).values():
             if isinstance(coordinator, SHEntityStatusCoordinator):
                 await coordinator.async_request_refresh()
 

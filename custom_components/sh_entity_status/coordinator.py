@@ -14,8 +14,8 @@ from homeassistant.helpers import (
     entity_registry as er,
     label_registry as lr,
 )
-from homeassistant.helpers.label_registry import EVENT_LABEL_REGISTRY_UPDATED
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.label_registry import EVENT_LABEL_REGISTRY_UPDATED
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (

@@ -1,13 +1,12 @@
 """Tests for SH Entity Status services."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.sh_entity_status.const import DOMAIN
-
 
 ENTRY_DATA = {
     "ignore_label": "ignore_unavailable",

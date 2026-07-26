@@ -155,12 +155,12 @@ GitHub surfaces a community profile score at **Insights → Community Standards*
 | File | Location | Status |
 |---|---|---|
 | `README.md` | root | ✅ Exists — review for completeness |
-| `LICENSE` | root | ❌ Must add |
-| `CODE_OF_CONDUCT.md` | `.github/` | ❌ Must add |
-| `CONTRIBUTING.md` | `.github/` | ❌ Must add |
-| `SECURITY.md` | `.github/` | ❌ Must add |
-| Issue templates | `.github/ISSUE_TEMPLATE/` | ❌ Must add |
-| PR template | `.github/pull_request_template.md` | ❌ Must add |
+| `LICENSE` | root | ✅ Exists |
+| `CODE_OF_CONDUCT.md` | `.github/` | ✅ Exists |
+| `CONTRIBUTING.md` | `.github/` | ✅ Exists |
+| `SECURITY.md` | `.github/` | ✅ Exists |
+| Issue templates | `.github/ISSUE_TEMPLATE/` | ✅ Exists |
+| PR template | `.github/pull_request_template.md` | ✅ Exists |
 
 ---
 

@@ -7,7 +7,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.sh_entity_status.const import DOMAIN
 
-
 ENTRY_DATA = {
     "ignore_label": "ignore_unavailable",
     "refresh_interval": 60,
