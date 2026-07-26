@@ -6,17 +6,17 @@ Source memory path: `/memories/session/plan.md`
 
 ## Plan: HACS Readiness With SmartHass Branding
 
-Prepare the integration for HACS testing and release readiness on branch chore-prepare-for-hacs, keep all internal sh-prefixed identifiers unchanged, and defer public visibility until final validation.
+Prepare the integration for HACS testing and release readiness on the active context branch (`copilot/context`), keep all internal sh-prefixed identifiers unchanged, and defer public visibility until final validation.
 
 **Completed so far**
-1. Branch created and active: chore-prepare-for-hacs.
+1. Branch created and active: copilot/context.
 2. Initial readiness updates committed on branch.
 3. Virtual environment workflow established.
 4. Ruff installed in venv and lint runs are working.
 
 **Steps**
 1. Phase 0 - Branch and guardrails (completed)
-2. Keep all implementation commits on chore-prepare-for-hacs.
+2. Keep all implementation commits on copilot/context.
 3. Preserve internal names: repo slug, folders, domain, entity IDs, service IDs, and sh prefixes.
 
 4. Phase 1 - Branding and documentation alignment
@@ -35,8 +35,8 @@ Prepare the integration for HACS testing and release readiness on branch chore-p
 16. Validate release archive composition and version consistency.
 
 17. Phase 3 - Copilot execution boundary and PR readiness
-18. Copilot may implement and commit incrementally on chore-prepare-for-hacs.
-19. Copilot may create Draft PR from chore-prepare-for-hacs to main.
+18. Copilot may implement and commit incrementally on copilot/context.
+19. Copilot may create Draft PR from copilot/context to main.
 20. Copilot must not approve the PR.
 21. Do not merge to main until explicit final sign-off after private checks.
 
@@ -66,7 +66,7 @@ Prepare the integration for HACS testing and release readiness on branch chore-p
 - c:/git/sh-hass-entity-status/.github/dependabot.yml - dependency and actions update automation.
 
 **Verification**
-1. Branch verification: active branch is chore-prepare-for-hacs and commits stay on this branch.
+1. Branch verification: active branch is copilot/context and commits stay on this branch.
 2. Naming verification: all internal sh-prefixed identifiers remain unchanged.
 3. Branding verification: public-facing SH references are updated to SmartHass where intended.
 4. Documentation verification: stale or removed-feature references are cleared.
@@ -78,7 +78,7 @@ Prepare the integration for HACS testing and release readiness on branch chore-p
 10. HACS verification after public flip: validator pass plus successful install/update tests.
 
 **Decisions**
-- Branch name is chore-prepare-for-hacs.
+- Branch name is copilot/context.
 - Public branding only is updated to SmartHass.
 - Internal/repo identifiers remain sh-prefixed.
 - Main branch protection is required before public visibility/testing.
