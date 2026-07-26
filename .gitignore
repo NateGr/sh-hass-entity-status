@@ -12,4 +12,3 @@ venv/
 htmlcov/
 .coverage
 *.log
-.venv312/

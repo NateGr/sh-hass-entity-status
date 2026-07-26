@@ -13,8 +13,8 @@ Prepare `sh-hass-entity-status` for HACS testing and release readiness while:
 - and deferring repo public visibility until final validation.
 
 ## Branch + State
-- Working branch: `copilot/context`
-- Main rule: all work stays on this context branch until explicit sign-off.
+- Working branch: `chore-prepare-for-hacs`
+- Main rule: all work stays on this working branch until explicit sign-off.
 - Copilot may create Draft PR only; no approval/merge by Copilot.
 
 ## Plan Status by Task
@@ -34,11 +34,11 @@ Prepare `sh-hass-entity-status` for HACS testing and release readiness while:
 - DONE: `docs/developer_spec.md` updated to reflect active lint/CI reality.
 - PENDING: configure branch protection settings in GitHub UI (cannot be done from local git).
 - PENDING: validate release archive/version workflow end-to-end once ready.
-- NOTE: latest `CI` workflow run on `copilot/context` is `action_required` with no jobs created; requires GitHub-side follow-up/rerun.
+- NOTE: latest `CI` workflow run on `chore-prepare-for-hacs` is `action_required` with no jobs created; requires GitHub-side follow-up/rerun.
 
 4. Phase 3 (PR readiness rules): DONE
 - Draft PR policy and merge gates are defined.
-- DONE: Draft PR opened from `copilot/context` to `main` — https://github.com/NateGr/sh-hass-entity-status/pull/10
+- DONE: Draft PR opened from `chore-prepare-for-hacs` to `main` — https://github.com/NateGr/sh-hass-entity-status/pull/10
 
 5. Phase 4 (Public-last HACS validation): NOT STARTED
 - PENDING: set repo description/topics, flip public, run HACS validation, test install/update in HA.
@@ -58,6 +58,20 @@ Prepare `sh-hass-entity-status` for HACS testing and release readiness while:
 4. Configure GitHub branch protection on `main`.
 5. Validate release archive/version workflow end-to-end when ready.
 6. Continue with public-last HACS validation sequence when explicitly approved.
+
+## Remainder Checklist (Execution Order)
+1. Finish and commit current doc updates on `chore-prepare-for-hacs`.
+2. Re-run local Ruff and pytest to confirm no regressions after edits.
+3. In GitHub Actions, re-run or unblock the `CI` workflow currently in `action_required` and confirm success.
+4. In GitHub branch settings, apply `main` protection:
+   - require pull request before merge,
+   - require status checks,
+   - require branch to be up to date,
+   - restrict direct pushes,
+   - disable force pushes.
+5. Validate release workflow path end-to-end on branch (archive/version behavior) before public flip.
+6. Keep PR #10 in Draft until checks/governance are green; then request review.
+7. Only after sign-off: set repo description/topics, make repo public, run HACS validation, test install/update in HA, then merge.
 
 ## Files Most Recently Touched
 - `.github/dependabot.yml`
