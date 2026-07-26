@@ -143,13 +143,6 @@ entities:
 
 Same structure with `devices` and `entities` keys (the sensor **state** — `suppressed` — distinguishes the context).
 
-### Attributes on `total_devices_entities`
-
-```yaml
-total_devices: 25
-total_entities: 130
-```
-
 ---
 
 ## Services
