@@ -1,12 +1,12 @@
 """Tests for the SH Entity Status coordinator unavailable model."""
 
+from datetime import timedelta
 from unittest.mock import MagicMock
 
 from custom_components.sh_entity_status.coordinator import (
     SHEntityStatusCoordinator,
     _format_duration,
 )
-from datetime import timedelta
 
 
 def _make_state(entity_id: str, state: str = "unavailable") -> MagicMock:
@@ -296,8 +296,9 @@ def test_count_sensor_attributes_are_counts() -> None:
         "labels": [],
         "label_map": {},
     }
-    from custom_components.sh_entity_status.sensor import SHEntityStatusSensor
     from types import SimpleNamespace
+
+    from custom_components.sh_entity_status.sensor import SHEntityStatusSensor
     # Simulate coordinator data
     data = {
         "unsuppressed_unavailable_devices": [device],

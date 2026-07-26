@@ -106,7 +106,14 @@ Config flow, sensor, and service tests use the `hass` fixture from `pytest-homea
 
 ## Linting / CI
 
-No linter is configured yet. Recommended additions:
-- `ruff` for linting and formatting
+Current CI includes:
+- `ruff` linting in `.github/workflows/ci.yml`
+- `pytest` execution in `.github/workflows/ci.yml`
+
+Clean CI dependency verification for linting:
+- CI explicitly installs `ruff` (`python -m pip install ruff`)
+- CI verifies availability on a fresh runner (`python -m ruff --version`)
+- Lint then runs with `python -m ruff check .`
+
+Recommended future additions:
 - `mypy` for type checking (HA-style strict config)
-- GitHub Actions workflow calling `pytest` on push/PR
