@@ -34,10 +34,11 @@ Prepare `sh-hass-entity-status` for HACS testing and release readiness while:
 - DONE: `docs/developer_spec.md` updated to reflect active lint/CI reality.
 - PENDING: configure branch protection settings in GitHub UI (cannot be done from local git).
 - PENDING: validate release archive/version workflow end-to-end once ready.
+- NOTE: latest `CI` workflow run on `copilot/context` is `action_required` with no jobs created; requires GitHub-side follow-up/rerun.
 
-4. Phase 3 (PR readiness rules): READY TO EXECUTE
+4. Phase 3 (PR readiness rules): DONE
 - Draft PR policy and merge gates are defined.
-- PENDING: open Draft PR after final planned file changes.
+- DONE: Draft PR opened from `copilot/context` to `main` — https://github.com/NateGr/sh-hass-entity-status/pull/10
 
 5. Phase 4 (Public-last HACS validation): NOT STARTED
 - PENDING: set repo description/topics, flip public, run HACS validation, test install/update in HA.
@@ -53,9 +54,9 @@ Prepare `sh-hass-entity-status` for HACS testing and release readiness while:
 2. Run final local checks after each additional change:
    - `python -m ruff check .`
    - `python -m pytest tests/ -v`
-3. Confirm CI green on branch after push.
+3. Resolve `CI` workflow `action_required` status on branch and confirm green checks.
 4. Configure GitHub branch protection on `main`.
-5. Open Draft PR from `copilot/context` to `main` with checklist.
+5. Validate release archive/version workflow end-to-end when ready.
 6. Continue with public-last HACS validation sequence when explicitly approved.
 
 ## Files Most Recently Touched

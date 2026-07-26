@@ -13,6 +13,7 @@ Prepare the integration for HACS testing and release readiness on the active con
 2. Initial readiness updates committed on branch.
 3. Virtual environment workflow established.
 4. Ruff installed in venv and lint runs are working.
+5. Draft PR opened from `copilot/context` to `main`: https://github.com/NateGr/sh-hass-entity-status/pull/10.
 
 **Steps**
 1. Phase 0 - Branch and guardrails (completed)
@@ -73,7 +74,7 @@ Prepare the integration for HACS testing and release readiness on the active con
 5. Ruff dependency verification in clean CI: fresh runner can execute Ruff without relying on local cache/state.
 6. Quality verification: Ruff and pytest pass using documented commands and CI checks.
 7. Dependabot verification: .github/dependabot.yml is valid and scheduled PRs can be created.
-8. PR readiness verification: draft PR is prepared with required checks green.
+8. PR readiness verification: draft PR is prepared; branch CI still needs GitHub-side action from current `action_required` state.
 9. Gate verification: no merge to main before explicit sign-off.
 10. HACS verification after public flip: validator pass plus successful install/update tests.
 
