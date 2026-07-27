@@ -4,6 +4,21 @@ on:
   pull_request:
     types:
       - closed
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: Ref or SHA to validate (defaults to current commit)
+        required: false
+        type: string
+      release_version:
+        description: Release version override (for manual release runs)
+        required: false
+        type: string
+      run_release_steps:
+        description: Run tag and publish steps (manual runs only)
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -11,21 +26,53 @@ permissions:
 jobs:
   tag_release:
     name: Tag and publish after release PR merge
-    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && startsWith(github.event.pull_request.head.ref, 'release/v') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && startsWith(github.event.pull_request.head.ref, 'release/v')) }}
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve target refs
+        id: target
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          MANUAL_REF: ${{ inputs.release_ref }}
+          FALLBACK_SHA: ${{ github.sha }}
+          FALLBACK_REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            CHECKOUT_REF="$PR_MERGE_SHA"
+            VERSION_REF="$PR_HEAD_REF"
+          else
+            CHECKOUT_REF="$MANUAL_REF"
+            VERSION_REF="$MANUAL_REF"
+            if [ -z "$CHECKOUT_REF" ]; then
+              CHECKOUT_REF="$FALLBACK_SHA"
+            fi
+            if [ -z "$VERSION_REF" ]; then
+              VERSION_REF="$FALLBACK_REF_NAME"
+            fi
+          fi
+
+          echo "checkout_ref=$CHECKOUT_REF" >> "$GITHUB_OUTPUT"
+          echo "version_ref=$VERSION_REF" >> "$GITHUB_OUTPUT"
+
       - name: Check out repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ steps.target.outputs.checkout_ref }}
 
       - name: Derive version from release branch
+        if: ${{ github.event_name == 'pull_request' || inputs.run_release_steps }}
         id: version
         env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REF: ${{ steps.target.outputs.version_ref }}
+          VERSION_OVERRIDE: ${{ inputs.release_version }}
         run: |
-          VERSION="${HEAD_REF#release/v}"
+          VERSION="$VERSION_OVERRIDE"
+          if [ -z "$VERSION" ]; then
+            VERSION="${HEAD_REF#release/v}"
+          fi
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Could not derive semantic version from head ref: $HEAD_REF" >&2
             exit 1
@@ -33,6 +80,7 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Verify merged manifest version matches branch version
+        if: ${{ github.event_name == 'pull_request' || inputs.run_release_steps }}
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
@@ -50,14 +98,16 @@ jobs:
           PY
 
       - name: Configure git identity for tag creation
+        if: ${{ github.event_name == 'pull_request' || inputs.run_release_steps }}
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Create and push tag
+        if: ${{ github.event_name == 'pull_request' || inputs.run_release_steps }}
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
-          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          MERGE_SHA: ${{ steps.target.outputs.checkout_ref }}
         run: |
           git fetch --tags origin
           if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
@@ -72,11 +122,13 @@ jobs:
         uses: hacs/action@main
         with:
           category: integration
+          repository: ${{ github.repository }}
 
       - name: Build release archive
         run: zip -r sh_entity_status.zip custom_components/sh_entity_status hacs.json README.md LICENSE CHANGELOG.md
 
       - name: Publish GitHub release
+        if: ${{ github.event_name == 'pull_request' || inputs.run_release_steps }}
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
