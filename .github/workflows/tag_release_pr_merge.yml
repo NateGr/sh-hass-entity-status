@@ -10,25 +10,15 @@ permissions:
 
 jobs:
   tag_release:
-    name: Create release tag after merge
+    name: Tag and publish after release PR merge
     if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && startsWith(github.event.pull_request.head.ref, 'release/v') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Require release bot token
-        env:
-          RELEASE_BOT_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
-        run: |
-          if [ -z "$RELEASE_BOT_TOKEN" ]; then
-            echo "Missing required secret: RELEASE_BOT_TOKEN" >&2
-            exit 1
-          fi
-
       - name: Check out repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: main
-          token: ${{ secrets.RELEASE_BOT_TOKEN }}
 
       - name: Derive version from release branch
         id: version
@@ -71,3 +61,20 @@ jobs:
           fi
           git tag -a "v$VERSION" "$MERGE_SHA" -m "Release v$VERSION"
           git push origin "v$VERSION"
+
+      - name: Run HACS validation
+        if: ${{ !github.event.repository.private }}
+        uses: hacs/action@main
+        with:
+          category: integration
+
+      - name: Build release archive
+        run: zip -r sh_entity_status.zip custom_components/sh_entity_status hacs.json README.md LICENSE CHANGELOG.md
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: v${{ steps.version.outputs.VERSION }}
+          files: sh_entity_status.zip
+          generate_release_notes: true
