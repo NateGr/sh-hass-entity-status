@@ -8,6 +8,14 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: publish-release-${{ github.event.inputs.version || 'auto' }}
+  cancel-in-progress: false
+
 jobs:
   ci:
     name: Lint & Test
@@ -50,12 +58,20 @@ jobs:
           category: integration
 
   release:
-    name: Tag & Release
+    name: Prepare Release PR
     needs: [ci, hacs]
+    if: ${{ needs.ci.result == 'success' && (needs.hacs.result == 'success' || needs.hacs.result == 'skipped') }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
+      - name: Require release bot token
+        env:
+          RELEASE_BOT_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_BOT_TOKEN" ]; then
+            echo "Missing required secret: RELEASE_BOT_TOKEN" >&2
+            exit 1
+          fi
+
       - name: Check out repository
         uses: actions/checkout@v7
         with:
@@ -75,7 +91,20 @@ jobs:
             PATCH=$(echo "$CURRENT" | cut -d. -f3)
             VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
           fi
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must be semantic (x.y.z). Got: $VERSION" >&2
+            exit 1
+          fi
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Fail if tag already exists
+        env:
+          VERSION: ${{ steps.resolve_version.outputs.VERSION }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists on origin." >&2
+            exit 1
+          fi
 
       - name: Bump version in manifest.json
         env:
@@ -86,32 +115,61 @@ jobs:
             > manifest.tmp && mv manifest.tmp \
             custom_components/sh_entity_status/manifest.json
 
-      - name: Commit version bump
+      - name: Prepare release branch name
+        id: branch_name
         env:
           VERSION: ${{ steps.resolve_version.outputs.VERSION }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add custom_components/sh_entity_status/manifest.json
-          git commit -m "Bump version to $VERSION"
-          git push
+          echo "BRANCH=release/v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Create and push tag
+      - name: Create or update release PR
+        id: create_pr
+        uses: peter-evans/create-pull-request@v7
         env:
           VERSION: ${{ steps.resolve_version.outputs.VERSION }}
-        run: |
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
-
-      - name: Build release archive
-        env:
-          VERSION: ${{ steps.resolve_version.outputs.VERSION }}
-        run: zip -r "sh_entity_status_v${VERSION}.zip" custom_components/sh_entity_status hacs.json README.md LICENSE CHANGELOG.md
-
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v3
         with:
-          tag_name: v${{ steps.resolve_version.outputs.VERSION }}
-          name: v${{ steps.resolve_version.outputs.VERSION }}
-          files: sh_entity_status_v${{ steps.resolve_version.outputs.VERSION }}.zip
-          generate_release_notes: true
+          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          commit-message: "chore: prepare release v${{ steps.resolve_version.outputs.VERSION }}"
+          branch: ${{ steps.branch_name.outputs.BRANCH }}
+          base: main
+          title: "chore: prepare release v${{ steps.resolve_version.outputs.VERSION }}"
+          body: |
+            Automated release PR for `v${{ steps.resolve_version.outputs.VERSION }}`.
+
+            What this PR does:
+            - bumps `custom_components/sh_entity_status/manifest.json` to `${{ steps.resolve_version.outputs.VERSION }}`
+            - runs required PR checks
+            - enables auto-merge so the PR merges as soon as checks pass
+
+            After merge, a release-tag workflow will create `v${{ steps.resolve_version.outputs.VERSION }}` and trigger the publish workflow.
+          add-paths: |
+            custom_components/sh_entity_status/manifest.json
+
+      - name: Ensure a release PR was opened
+        if: ${{ steps.create_pr.outputs.pull-request-number == '' }}
+        run: |
+          echo "No release PR was created. This usually means there were no file changes to commit." >&2
+          exit 1
+
+      - name: Enable auto-merge on release PR
+        if: ${{ steps.create_pr.outputs.pull-request-number != '' }}
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}
+          merge-method: squash
+
+      - name: Auto-approve release PR (best effort)
+        if: ${{ steps.create_pr.outputs.pull-request-number != '' }}
+        continue-on-error: true
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          script: |
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number('${{ steps.create_pr.outputs.pull-request-number }}'),
+              event: 'APPROVE',
+              body: 'Automated release approval by workflow.'
+            });

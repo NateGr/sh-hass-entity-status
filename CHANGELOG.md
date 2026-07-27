@@ -5,16 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project aims to follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.0.5] - 2026-07-26
 
 ### Added
-- Standard GitHub community health files and templates.
-- GitHub Actions workflows for CI, HACS validation, and tagged releases.
+- First public release of SmartHass Entity Status.
+- Entity availability monitoring with configurable suppression by Home Assistant label.
+- Count and list sensors for unsuppressed and suppressed unavailable devices/entities.
+- Service actions and refresh button for registry and polling operations.
 
 ### Changed
-- Contributor guidance now points to dedicated GitHub community documents.
-- Test dependencies are pinned for more repeatable local and CI runs.
-
-## [1.0.4]
-
-- Current release history prior to this changelog has not yet been backfilled.
+- Public project branding aligned to SmartHass Entity Status.
+- CI and release automation prepared for tag-based publication.
