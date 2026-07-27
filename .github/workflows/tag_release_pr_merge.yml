@@ -49,6 +49,11 @@ jobs:
               )
           PY
 
+      - name: Configure git identity for tag creation
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Create and push tag
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
