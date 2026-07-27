@@ -1,7 +1,7 @@
 {
   "domain": "sh_entity_status",
   "name": "SmartHass Entity Status",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "config_flow": true,
   "documentation": "https://github.com/NateGr/sh-hass-entity-status",
   "issue_tracker": "https://github.com/NateGr/sh-hass-entity-status/issues",
