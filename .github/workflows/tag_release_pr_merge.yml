@@ -122,7 +122,7 @@ jobs:
         uses: hacs/action@main
         with:
           category: integration
-          repository: ${{ github.repository }}@${{ steps.target.outputs.checkout_ref }}
+          repository: ${{ github.repository }}
 
       - name: Build release archive
         run: zip -r sh_entity_status.zip custom_components/sh_entity_status hacs.json README.md LICENSE CHANGELOG.md
