@@ -1,6 +1,8 @@
 # Contributing
 
-Thank you for your interest in contributing to SmartHass Entity Status.
+SmartHass Entity Status is a solo-maintained project. I'm happy when others find it useful,
+and I welcome contributions that align with the project's goals. That said, I have limited time,
+so please set realistic expectations around review cycles and what's in scope.
 
 ## Getting Started
 
@@ -52,3 +54,21 @@ solution, and any alternatives you considered.
 
 By participating in this project, you agree to follow the
 [Code of Conduct](CODE_OF_CONDUCT.md).
+
+---
+
+## Future Maintainer Note
+
+Before this file is considered final, revisit and define your hard boundaries so contributors
+know what to expect. Consider documenting answers to:
+
+- **Feature scope** — What fits the project's vision? Open to any HA-related ideas, or only
+  improvements to existing functionality?
+- **Code quality** — What's required before merging? (e.g., passing tests and linting, updated
+  docs, no new dependencies without discussion)
+- **Response time** — What can you realistically commit to? ("I review when I can, typically
+  within X weeks")
+- **Major changes** — What needs discussion before work starts? (e.g., rewrites, new
+  dependencies, architecture changes)
+
+Documenting these now saves you from difficult conversations later.
