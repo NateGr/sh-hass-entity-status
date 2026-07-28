@@ -57,18 +57,16 @@ By participating in this project, you agree to follow the
 
 ---
 
-## Future Maintainer Note
+## Contributor Boundaries
 
-Before this file is considered final, revisit and define your hard boundaries so contributors
-know what to expect. Consider documenting answers to:
+To set clear expectations:
 
-- **Feature scope** — What fits the project's vision? Open to any HA-related ideas, or only
-  improvements to existing functionality?
-- **Code quality** — What's required before merging? (e.g., passing tests and linting, updated
-  docs, no new dependencies without discussion)
-- **Response time** — What can you realistically commit to? ("I review when I can, typically
-  within X weeks")
-- **Major changes** — What needs discussion before work starts? (e.g., rewrites, new
-  dependencies, architecture changes)
-
-Documenting these now saves you from difficult conversations later.
+- **Feature scope** — This project focuses on improving existing functionality. PRs that add
+  entirely new features are out of scope and will not be merged. If you have a new feature idea,
+  open a discussion issue first—I may consider it for a future roadmap, but I make no commitment.
+- **Code quality** — All PRs must pass linting (`ruff check .`) and tests (`python -m pytest tests/ -v`),
+  include updated tests for any behavior change, and update documentation if user-facing behavior
+  changes. No new dependencies without prior discussion.
+- **Response time** — I review when I can. There is no SLA. Don't expect a turnaround in days.
+- **Major changes** — Rewrites, architectural changes, or new dependencies require an open issue
+  and agreement before work starts. PRs that arrive without prior discussion will be closed.
