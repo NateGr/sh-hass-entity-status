@@ -13,7 +13,5 @@ comments—is expected to treat others with courtesy and good faith.
 
 ## Enforcement
 
-I'm the sole maintainer and reserve final judgment on what stays. Violations may result in
+The maintainer reserves final judgment on all enforcement decisions. Violations may result in
 removal of comments, rejection of contributions, or blocking from the project.
-
-That's it.
