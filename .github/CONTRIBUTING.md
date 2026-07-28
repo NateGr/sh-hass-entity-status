@@ -1,6 +1,8 @@
 # Contributing
 
-Thank you for your interest in contributing to SmartHass Entity Status.
+SmartHass Entity Status is a solo-maintained project. I'm happy when others find it useful,
+and I welcome contributions that align with the project's goals. That said, I have limited time,
+so please set realistic expectations around review cycles and what's in scope.
 
 ## Getting Started
 
@@ -52,3 +54,19 @@ solution, and any alternatives you considered.
 
 By participating in this project, you agree to follow the
 [Code of Conduct](CODE_OF_CONDUCT.md).
+
+---
+
+## Contributor Boundaries
+
+To set clear expectations:
+
+- **Feature scope** — This project focuses on improving existing functionality. PRs that add
+  entirely new features are out of scope and will not be merged. If you have a new feature idea,
+  open a discussion issue first—I may consider it for a future roadmap, but I make no commitment.
+- **Code quality** — All PRs must pass linting (`ruff check .`) and tests (`python -m pytest tests/ -v`),
+  include updated tests for any behavior change, and update documentation if user-facing behavior
+  changes. No new dependencies without prior discussion.
+- **Response time** — I review when I can. There is no SLA. Don't expect a turnaround in days.
+- **Major changes** — Rewrites, architectural changes, or new dependencies require an open issue
+  and agreement before work starts. PRs that arrive without prior discussion will be closed.
