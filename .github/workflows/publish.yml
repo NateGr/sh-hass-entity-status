@@ -112,7 +112,7 @@ jobs:
 
       - name: Create or update release PR
         id: create_pr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         env:
           VERSION: ${{ steps.resolve_version.outputs.VERSION }}
         with:
