@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -87,9 +88,9 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_downtime_duration: str | None = None
 
         # Cleanup handles
-        self._registry_refresh_unsub = None
-        self._heartbeat_unsub = None
-        self._event_unsubs: list = []
+        self._registry_refresh_unsub: Callable[[], None] | None = None
+        self._heartbeat_unsub: Callable[[], None] | None = None
+        self._event_unsubs: list[Callable[[], None]] = []
 
     # ------------------------------------------------------------------
     # Setup / teardown
@@ -155,7 +156,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.hass.async_create_task(self._async_refresh_registry())
 
     @callback
-    def _handle_registry_event(self, event: Event) -> None:
+    def _handle_registry_event(self, event: Event[Any]) -> None:
         """Triggered on entity/device registry updates."""
         self.hass.async_create_task(self._async_refresh_registry())
 
@@ -179,7 +180,6 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         devices: dict[str, dict] = {}
         orphan_entities: list[dict] = []
 
-
         for entity_entry in entity_reg.entities.values():
             entity_labels = list(entity_entry.labels or [])
             entity_label_set = set(entity_labels)
@@ -194,7 +194,9 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # Compose display_name as 'Name (Area)' if area exists, else just 'Name'
             entity_base_name = (
-                entity_entry.name or entity_entry.original_name or entity_entry.entity_id
+                entity_entry.name
+                or entity_entry.original_name
+                or entity_entry.entity_id
             )
             if entity_area_name:
                 display_name = f"{entity_base_name} ({entity_area_name})"
@@ -233,7 +235,6 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 dev_area_name = ""
                 if dev_area_id and dev_area_id in area_reg.areas:
                     dev_area_name = area_reg.areas[dev_area_id].name
-
 
                 # Compose display_name as 'Name (Area)' if area exists, else just 'Name'
                 device_base_name = dev.name_by_user or dev.name or device_id
@@ -294,10 +295,9 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Compute total registry counts (independent of unavailability)
         total_devices = len(self._devices)
-        total_entities = (
-            sum(len(d.get("entities", [])) for d in self._devices.values())
-            + len(self._orphan_entities)
-        )
+        total_entities = sum(
+            len(d.get("entities", [])) for d in self._devices.values()
+        ) + len(self._orphan_entities)
 
         # Update downtime tracking
         now = datetime.now(timezone.utc)
@@ -308,9 +308,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Handle recoveries — compute duration for entities that came back online
         recovered = set(self._downtime_start.keys()) - unavailable_ids
         if recovered:
-            max_duration = max(
-                now - self._downtime_start[eid] for eid in recovered
-            )
+            max_duration = max(now - self._downtime_start[eid] for eid in recovered)
             self._last_downtime_duration = _format_duration(max_duration)
             for eid in recovered:
                 del self._downtime_start[eid]

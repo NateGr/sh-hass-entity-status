@@ -233,10 +233,26 @@ def test_total_counts_reflect_registry() -> None:
         "labels": [],
         "label_map": {},
         "entities": [
-            {"entity_id": "sensor.a", "name": "A", "display_name": "A", "device_id": "dev1",
-             "area_id": None, "area_name": "", "labels": [], "label_map": {}},
-            {"entity_id": "sensor.b", "name": "B", "display_name": "B", "device_id": "dev1",
-             "area_id": None, "area_name": "", "labels": [], "label_map": {}},
+            {
+                "entity_id": "sensor.a",
+                "name": "A",
+                "display_name": "A",
+                "device_id": "dev1",
+                "area_id": None,
+                "area_name": "",
+                "labels": [],
+                "label_map": {},
+            },
+            {
+                "entity_id": "sensor.b",
+                "name": "B",
+                "display_name": "B",
+                "device_id": "dev1",
+                "area_id": None,
+                "area_name": "",
+                "labels": [],
+                "label_map": {},
+            },
         ],
     }
     orphan = {
@@ -280,10 +296,26 @@ def test_count_sensor_attributes_are_counts() -> None:
         "labels": [],
         "label_map": {},
         "entities": [
-            {"entity_id": "sensor.a", "name": "A", "display_name": "A", "device_id": "dev1",
-             "area_id": None, "area_name": "", "labels": [], "label_map": {}},
-            {"entity_id": "sensor.b", "name": "B", "display_name": "B", "device_id": "dev1",
-             "area_id": None, "area_name": "", "labels": [], "label_map": {}},
+            {
+                "entity_id": "sensor.a",
+                "name": "A",
+                "display_name": "A",
+                "device_id": "dev1",
+                "area_id": None,
+                "area_name": "",
+                "labels": [],
+                "label_map": {},
+            },
+            {
+                "entity_id": "sensor.b",
+                "name": "B",
+                "display_name": "B",
+                "device_id": "dev1",
+                "area_id": None,
+                "area_name": "",
+                "labels": [],
+                "label_map": {},
+            },
         ],
     }
     orphan = {
@@ -299,6 +331,7 @@ def test_count_sensor_attributes_are_counts() -> None:
     from types import SimpleNamespace
 
     from custom_components.sh_entity_status.sensor import SHEntityStatusSensor
+
     # Simulate coordinator data
     data = {
         "unsuppressed_unavailable_devices": [device],
@@ -309,12 +342,20 @@ def test_count_sensor_attributes_are_counts() -> None:
         "suppressed_unavailable_count": 0,
     }
     entry = SimpleNamespace(entry_id="test")
-    desc = {"key": "unsuppressed_unavailable_count", "name": "Unsuppressed Unavailable Count", "icon": "mdi:alert-circle-outline"}
+    desc = {
+        "key": "unsuppressed_unavailable_count",
+        "name": "Unsuppressed Unavailable Count",
+        "icon": "mdi:alert-circle-outline",
+    }
     sensor = SHEntityStatusSensor(SimpleNamespace(data=data), entry, desc)
     attrs = sensor.extra_state_attributes
     assert attrs["devices_count"] == 1
     assert attrs["entities_count"] == 1
-    desc2 = {"key": "suppressed_unavailable_count", "name": "Suppressed Unavailable Count", "icon": "mdi:bell-off-outline"}
+    desc2 = {
+        "key": "suppressed_unavailable_count",
+        "name": "Suppressed Unavailable Count",
+        "icon": "mdi:bell-off-outline",
+    }
     sensor2 = SHEntityStatusSensor(SimpleNamespace(data=data), entry, desc2)
     attrs2 = sensor2.extra_state_attributes
     assert attrs2["devices_count"] == 0

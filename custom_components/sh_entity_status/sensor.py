@@ -22,7 +22,7 @@ from .coordinator import SHEntityStatusCoordinator
 # entity_ids share a common namespace (e.g. sensor.sh_entity_status_unavailable_count).
 # To rename sensors: change the "name" value here; the prefix is controlled via
 # ENTITY_ID_PREFIX in const.py.
-_SENSOR_DESCRIPTIONS = [
+_SENSOR_DESCRIPTIONS: list[dict[str, Any]] = [
     {
         "key": "unsuppressed_unavailable_count",
         "name": "Unsuppressed Unavailable Count",
@@ -166,11 +166,15 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         if self._key == "unsuppressed_unavailable_count":
             return {
                 "devices_count": len(data.get("unsuppressed_unavailable_devices", [])),
-                "entities_count": len(data.get("unsuppressed_orphaned_unavailable_entities", [])),
+                "entities_count": len(
+                    data.get("unsuppressed_orphaned_unavailable_entities", [])
+                ),
             }
         if self._key == "suppressed_unavailable_count":
             return {
                 "devices_count": len(data.get("suppressed_unavailable_devices", [])),
-                "entities_count": len(data.get("suppressed_orphaned_unavailable_entities", [])),
+                "entities_count": len(
+                    data.get("suppressed_orphaned_unavailable_entities", [])
+                ),
             }
         return None

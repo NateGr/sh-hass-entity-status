@@ -1,4 +1,5 @@
 """Pytest configuration and shared fixtures."""
+
 import sys
 
 import pytest
