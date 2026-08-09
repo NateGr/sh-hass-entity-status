@@ -1,4 +1,5 @@
 """Tests for the SmartHass Entity Status config flow."""
+
 import pytest
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResultType, InvalidData

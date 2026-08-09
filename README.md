@@ -1,11 +1,33 @@
 # SmartHass Entity Status
-
 [![HACS Badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![CI](https://github.com/NateGr/sh-hass-entity-status/actions/workflows/ci.yml/badge.svg)](https://github.com/NateGr/sh-hass-entity-status/actions/workflows/ci.yml)
 [![GitHub Release](https://img.shields.io/github/release/NateGr/sh-hass-entity-status.svg?style=flat-square)](https://github.com/NateGr/sh-hass-entity-status/releases)
+[![GitHub Downloads](https://img.shields.io/github/downloads/NateGr/sh-hass-entity-status/total.svg?style=flat-square)](https://github.com/NateGr/sh-hass-entity-status/releases)
 [![License](https://img.shields.io/github/license/NateGr/sh-hass-entity-status)](LICENSE)
 
 A Home Assistant custom integration that monitors entity availability across your entire HA instance and exposes configurable **suppression** — so that "expected" unavailability (a device under maintenance, a sensor you don't care about) doesn't pollute your dashboards or trigger false alerts.
+
+---
+
+## Minimum HA Version
+
+**2026.3.0**
+
+---
+
+## Installation
+
+### Via HACS (recommended)
+
+1. In HACS, go to **Integrations → Custom Repositories**.
+2. Add `https://github.com/NateGr/sh-hass-entity-status` (type: Integration).
+3. Install **SmartHass Entity Status** and restart Home Assistant.
+
+### Manual
+
+1. Download or clone this repository.
+2. Copy `custom_components/sh_entity_status/` into your HA config's `custom_components/` directory.
+3. Restart Home Assistant.
 
 ---
 
@@ -32,28 +54,6 @@ An entity is considered **orphaned** if it has no valid parent device — for ex
 
 ---
 
-## Minimum HA Version
-
-**2026.3.0**
-
----
-
-## Installation
-
-### Via HACS (recommended)
-
-1. In HACS, go to **Integrations → Custom Repositories**.
-2. Add `https://github.com/NateGr/sh-hass-entity-status` (type: Integration).
-3. Install **SmartHass Entity Status** and restart Home Assistant.
-
-### Manual
-
-1. Download or clone this repository.
-2. Copy `custom_components/sh_entity_status/` into your HA config's `custom_components/` directory.
-3. Restart Home Assistant.
-
----
-
 ## Configuration
 
 After installation, go to **Settings → Devices & Services → Add Integration** and search for **SmartHass Entity Status**.
@@ -66,14 +66,6 @@ After installation, go to **Settings → Devices & Services → Add Integration*
 | Poll interval (seconds)    | `30`                      | How often to check for unavailable entities. Must be >= 5. |
 
 All options are editable post-setup via the **Configure** button on the integration card.
-
----
-
-## Recent Changes
-
-- Added `display_name` attribute to device and entity records, formatted as `Name (Area)` if area exists, otherwise just `Name`.
-- Removed unused sensors: `total_devices_entities` and `recent_downtime_duration`.
-- Updated test cases to match new attributes and logic.
 
 ---
 
@@ -216,10 +208,21 @@ Orphaned entities:
 
 ## Contributing
 
-Contributions are welcome. Before opening a pull request, please review:
+If you want to submit a pull request, use this flow:
 
-- [`CONTRIBUTING.md`](.github/CONTRIBUTING.md) for setup and validation steps
-- [`CODE_OF_CONDUCT.md`](.github/CODE_OF_CONDUCT.md) for community expectations
-- [`SECURITY.md`](.github/SECURITY.md) for vulnerability reporting guidance
+1. Fork this repository.
+2. Create a branch from `main` in your fork.
+3. Make your change.
+4. Run local checks:
 
-Please ensure all tests pass and add tests for new behaviour.
+  ```bash
+  ruff check .
+  python -m pytest tests/ -v
+  ```
+
+5. Open a pull request with a short summary of the change.
+
+If your change affects behavior, update tests and user-facing docs in the same pull request.
+Review the repository license before submitting changes. See [`LICENSE`](LICENSE).
+
+For local setup and release workflow details, see [`docs/developer_spec.md`](docs/developer_spec.md).

@@ -1,5 +1,27 @@
 # Developer Specification — SmartHass Entity Status
 
+## Fork, Validate, and Release
+
+Use this sequence when working from a fork.
+
+1. Fork the repository and clone your fork.
+2. Create a branch from `main` for your change.
+3. Run checks locally before opening a pull request:
+
+```bash
+ruff check .
+python -m pytest tests/ -v
+```
+
+4. Push your branch and open a pull request.
+5. If you are preparing a release from your fork, use `release.sh`:
+
+```bash
+./release.sh 1.2.3
+```
+
+`release.sh` requires GitHub CLI (`gh`) and dispatches the `publish.yml` workflow with the version you provide.
+
 ## Development Environment Setup
 
 ### Prerequisites
