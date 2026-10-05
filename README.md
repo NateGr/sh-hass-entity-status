@@ -79,26 +79,10 @@ All entity IDs are prefixed with `sh_entity_status_`. All entities appear togeth
 | ------------------------------------------ | ------------------------------------------------------------------ |
 | `button.sh_entity_status_refresh_registry` | Immediately rebuilds the internal device/entity registry hierarchy |
 
-### Count Sensors
-
-- `sensor.sh_entity_status_unsuppressed_unavailable_count`
-- `sensor.sh_entity_status_suppressed_unavailable_count`
-
-**State:**
-
-- The total number of unavailable devices and orphaned entities (suppressed or unsuppressed).
-
-**Attributes:**
-
-- `devices_count`: Integer. The count of unavailable devices (matching suppressed/unsuppressed)
-- `entities_count`: Integer. The count of unavailable orphaned entities (matching suppressed/unsuppressed)
-
-This naming avoids confusion with the list sensors, which use `devices` and `entities` as lists.
-
 ### List Sensors
 
-- `sensor.sh_entity_status_unsuppressed_unavailable_list`
-- `sensor.sh_entity_status_suppressed_unavailable_list`
+- `sensor.sh_entity_status_unsuppressed_list`
+- `sensor.sh_entity_status_suppressed_list`
 
 **State:**
 
@@ -108,8 +92,10 @@ This naming avoids confusion with the list sensors, which use `devices` and `ent
 
 - `devices`: List of unavailable devices
 - `entities`: List of unavailable orphaned entities
+- `devices_count`: Number of unavailable devices
+- `entities_count`: Number of unavailable orphaned entities
 
-### Attributes on `unsuppressed_unavailable_list`
+### Attributes on `unsuppressed_list`
 
 ```yaml
 devices:
@@ -131,7 +117,7 @@ entities:
       ignore_unavailable: false
 ```
 
-### Attributes on `suppressed_unavailable_list`
+### Attributes on `suppressed_list`
 
 Same structure with `devices` and `entities` keys (the sensor **state** — `suppressed` — distinguishes the context).
 
@@ -172,20 +158,20 @@ automation:
   - alias: Alert on new unavailable items
     trigger:
       - platform: numeric_state
-        entity_id: sensor.sh_entity_status_unsuppressed_unavailable_count
+        entity_id: sensor.sh_entity_status_unsuppressed_list
         above: 0
     action:
       - service: notify.mobile_app_my_phone
         data:
           message: >
-            {{ states('sensor.sh_entity_status_unsuppressed_unavailable_count') }} unavailable items need attention.
+            {{ states('sensor.sh_entity_status_unsuppressed_list') }} unavailable items need attention.
 ```
 
 ### Template: list unsuppressed items
 
 ```yaml
-{% set devices = state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list', 'devices') or [] %}
-{% set orphans = state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list', 'entities') or [] %}
+{% set devices = state_attr('sensor.sh_entity_status_unsuppressed_list', 'devices') or [] %}
+{% set orphans = state_attr('sensor.sh_entity_status_unsuppressed_list', 'entities') or [] %}
 Devices:
 {% for d in devices %}  - {{ d.name }} ({{ d.area_name or 'no area' }})
 {% endfor %}

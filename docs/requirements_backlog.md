@@ -16,13 +16,10 @@
   - Items are categorized into **unsuppressed** and **suppressed** groups.
   - Categories include both unavailable **devices** and unavailable **orphaned entities**.
   - Internally, device-linked and orphaned items remain split.
-- **4 sensors**:
-  - `sensor.sh_entity_status_unsuppressed_unavailable_count`
-  - `sensor.sh_entity_status_suppressed_unavailable_count`
-  - `sensor.sh_entity_status_unsuppressed_unavailable_list`
-  - `sensor.sh_entity_status_suppressed_unavailable_list`
-- **Added `devices_count` and `entities_count` attributes to the unavailable count sensors (suppressed and unsuppressed), providing direct access to device-only and entity-only counts for dashboards and automations.**
-- **The unavailable count sensors now use `devices_count` and `entities_count` attributes (integers), while the list sensors use `devices` and `entities` (lists), for clarity and consistency.**
+- **2 sensors**:
+  - `sensor.sh_entity_status_unsuppressed_list`
+  - `sensor.sh_entity_status_suppressed_list`
+- Each list sensor exposes a numeric total state, `devices` and `entities` lists, and `devices_count` and `entities_count` attributes.
 - **1 button**: `button.sh_entity_status_refresh_registry` (forces immediate registry rebuild and refresh).
 - **3 services**: `refresh_registry`, `poll_unavailable`, `reload` (with `services.yaml` metadata).
 - **Single integration device view** — entities are grouped under one virtual device via `DeviceInfo`.

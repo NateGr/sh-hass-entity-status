@@ -285,8 +285,8 @@ def test_format_duration_hours() -> None:
     assert _format_duration(timedelta(hours=2, minutes=15)) == "2h 15m"
 
 
-def test_count_sensor_attributes_are_counts() -> None:
-    """The *_count sensors should expose devices_count and entities_count attributes as integers."""
+def test_list_sensor_attributes_include_counts() -> None:
+    """List sensors expose their total and device/entity count attributes."""
     device = {
         "id": "dev1",
         "name": "A Device",
@@ -338,25 +338,25 @@ def test_count_sensor_attributes_are_counts() -> None:
         "unsuppressed_orphaned_unavailable_entities": [orphan],
         "suppressed_unavailable_devices": [],
         "suppressed_orphaned_unavailable_entities": [],
-        "unsuppressed_unavailable_count": 2,
-        "suppressed_unavailable_count": 0,
     }
     entry = SimpleNamespace(entry_id="test")
     desc = {
-        "key": "unsuppressed_unavailable_count",
-        "name": "Unsuppressed Unavailable Count",
-        "icon": "mdi:alert-circle-outline",
+        "key": "unsuppressed_list",
+        "name": "Unsuppressed List",
+        "icon": "mdi:format-list-bulleted",
     }
     sensor = SHEntityStatusSensor(SimpleNamespace(data=data), entry, desc)
+    assert sensor.native_value == 2
     attrs = sensor.extra_state_attributes
     assert attrs["devices_count"] == 1
     assert attrs["entities_count"] == 1
     desc2 = {
-        "key": "suppressed_unavailable_count",
-        "name": "Suppressed Unavailable Count",
-        "icon": "mdi:bell-off-outline",
+        "key": "suppressed_list",
+        "name": "Suppressed List",
+        "icon": "mdi:format-list-checks",
     }
     sensor2 = SHEntityStatusSensor(SimpleNamespace(data=data), entry, desc2)
+    assert sensor2.native_value == 0
     attrs2 = sensor2.extra_state_attributes
     assert attrs2["devices_count"] == 0
     assert attrs2["entities_count"] == 0

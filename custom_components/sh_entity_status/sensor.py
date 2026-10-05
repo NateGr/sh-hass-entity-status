@@ -19,31 +19,18 @@ from .const import DOMAIN, ENTITY_ID_PREFIX, INTEGRATION_NAME
 from .coordinator import SHEntityStatusCoordinator
 
 # Sensor short names — ENTITY_ID_PREFIX is prepended at runtime so that all
-# entity_ids share a common namespace (e.g. sensor.sh_entity_status_unavailable_count).
-# To rename sensors: change the "name" value here; the prefix is controlled via
-# ENTITY_ID_PREFIX in const.py.
+# entity_ids share a common namespace (e.g. sensor.sh_entity_status_unsuppressed_list).
+# The key sets each entity_id suffix; ENTITY_ID_PREFIX controls the shared prefix.
 _SENSOR_DESCRIPTIONS: list[dict[str, Any]] = [
     {
-        "key": "unsuppressed_unavailable_count",
-        "name": "Unsuppressed Unavailable Count",
-        "icon": "mdi:alert-circle-outline",
-        "state_class": SensorStateClass.MEASUREMENT,
-    },
-    {
-        "key": "suppressed_unavailable_count",
-        "name": "Suppressed Unavailable Count",
-        "icon": "mdi:bell-off-outline",
-        "state_class": SensorStateClass.MEASUREMENT,
-    },
-    {
-        "key": "unsuppressed_unavailable_list",
-        "name": "Unsuppressed Unavailable List",
+        "key": "unsuppressed_list",
+        "name": "Unsuppressed List",
         "icon": "mdi:format-list-bulleted",
         "state_class": SensorStateClass.MEASUREMENT,
     },
     {
-        "key": "suppressed_unavailable_list",
-        "name": "Suppressed Unavailable List",
+        "key": "suppressed_list",
+        "name": "Suppressed List",
         "icon": "mdi:format-list-checks",
         "state_class": SensorStateClass.MEASUREMENT,
     },
@@ -126,16 +113,11 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         data = self.coordinator.data or {}
         key = self._key
 
-        if key in (
-            "unsuppressed_unavailable_count",
-            "suppressed_unavailable_count",
-        ):
-            return int(data.get(key, 0))
-        if key == "unsuppressed_unavailable_list":
+        if key == "unsuppressed_list":
             return len(data.get("unsuppressed_unavailable_devices", [])) + len(
                 data.get("unsuppressed_orphaned_unavailable_entities", [])
             )
-        if key == "suppressed_unavailable_list":
+        if key == "suppressed_list":
             return len(data.get("suppressed_unavailable_devices", [])) + len(
                 data.get("suppressed_orphaned_unavailable_entities", [])
             )
@@ -153,25 +135,19 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         data = self.coordinator.data or {}
         # Item 12: simplified attribute keys — use 'devices' and 'entities'
         # regardless of suppressed/unsuppressed context (state already conveys that).
-        if self._key == "unsuppressed_unavailable_list":
+        if self._key == "unsuppressed_list":
             return {
                 "devices": data.get("unsuppressed_unavailable_devices", []),
                 "entities": data.get("unsuppressed_orphaned_unavailable_entities", []),
-            }
-        if self._key == "suppressed_unavailable_list":
-            return {
-                "devices": data.get("suppressed_unavailable_devices", []),
-                "entities": data.get("suppressed_orphaned_unavailable_entities", []),
-            }
-        if self._key == "unsuppressed_unavailable_count":
-            return {
                 "devices_count": len(data.get("unsuppressed_unavailable_devices", [])),
                 "entities_count": len(
                     data.get("unsuppressed_orphaned_unavailable_entities", [])
                 ),
             }
-        if self._key == "suppressed_unavailable_count":
+        if self._key == "suppressed_list":
             return {
+                "devices": data.get("suppressed_unavailable_devices", []),
+                "entities": data.get("suppressed_orphaned_unavailable_entities", []),
                 "devices_count": len(data.get("suppressed_unavailable_devices", [])),
                 "entities_count": len(
                     data.get("suppressed_orphaned_unavailable_entities", [])

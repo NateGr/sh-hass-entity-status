@@ -40,8 +40,23 @@ def config_entry() -> MockConfigEntry:
 async def test_sensors_created(
     hass: HomeAssistant, config_entry: MockConfigEntry
 ) -> None:
-    """Test that the current sensors are created after setup."""
+    """Test sensor creation and migration of the previous entity IDs."""
     config_entry.add_to_hass(hass)
+    from homeassistant.helpers import entity_registry as er
+
+    ent_reg = er.async_get(hass)
+    for key in (
+        "unsuppressed_unavailable_count",
+        "suppressed_unavailable_count",
+        "unsuppressed_unavailable_list",
+        "suppressed_unavailable_list",
+    ):
+        ent_reg.async_get_or_create(
+            "sensor",
+            DOMAIN,
+            f"{config_entry.entry_id}_{DOMAIN}_{key}",
+            suggested_object_id=f"sh_entity_status_{key}",
+        )
 
     with (
         patch(
@@ -56,10 +71,8 @@ async def test_sensors_created(
         await hass.async_block_till_done()
 
     expected_entity_ids = [
-        "sensor.sh_entity_status_unsuppressed_unavailable_count",
-        "sensor.sh_entity_status_suppressed_unavailable_count",
-        "sensor.sh_entity_status_unsuppressed_unavailable_list",
-        "sensor.sh_entity_status_suppressed_unavailable_list",
+        "sensor.sh_entity_status_unsuppressed_list",
+        "sensor.sh_entity_status_suppressed_list",
         "sensor.sh_entity_status_last_registry_refresh",
         "sensor.sh_entity_status_last_status_poll",
         "sensor.sh_entity_status_heartbeat",
@@ -67,6 +80,32 @@ async def test_sensors_created(
     for eid in expected_entity_ids:
         state = hass.states.get(eid)
         assert state is not None, f"Sensor {eid} not found in states"
+    for key in ("unsuppressed_list", "suppressed_list"):
+        assert (
+            ent_reg.async_get_entity_id(
+                "sensor", DOMAIN, f"{config_entry.entry_id}_{DOMAIN}_{key}"
+            )
+            is not None
+        )
+    for key in (
+        "unsuppressed_unavailable_count",
+        "suppressed_unavailable_count",
+        "unsuppressed_unavailable_list",
+        "suppressed_unavailable_list",
+    ):
+        assert (
+            ent_reg.async_get_entity_id(
+                "sensor", DOMAIN, f"{config_entry.entry_id}_{DOMAIN}_{key}"
+            )
+            is None
+        )
+    assert (
+        hass.states.get("sensor.sh_entity_status_unsuppressed_unavailable_count")
+        is None
+    )
+    assert (
+        hass.states.get("sensor.sh_entity_status_suppressed_unavailable_count") is None
+    )
 
 
 async def test_sensor_unique_ids(
@@ -91,10 +130,8 @@ async def test_sensor_unique_ids(
 
     ent_reg = er.async_get(hass)
     sensor_keys = [
-        "unsuppressed_unavailable_count",
-        "suppressed_unavailable_count",
-        "unsuppressed_unavailable_list",
-        "suppressed_unavailable_list",
+        "unsuppressed_list",
+        "suppressed_list",
         "last_registry_refresh",
         "last_status_poll",
         "heartbeat",
@@ -175,20 +212,16 @@ async def test_sensor_state_updates_with_coordinator_data(
         await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()
 
-    state = hass.states.get("sensor.sh_entity_status_unsuppressed_unavailable_count")
+    state = hass.states.get("sensor.sh_entity_status_unsuppressed_list")
     assert state is not None
     assert state.state == "2"
 
-    state = hass.states.get("sensor.sh_entity_status_suppressed_unavailable_count")
-    assert state.state == "2"
-
-    state = hass.states.get("sensor.sh_entity_status_unsuppressed_unavailable_list")
-    assert state.state == "2"
-
-    state = hass.states.get("sensor.sh_entity_status_suppressed_unavailable_list")
+    state = hass.states.get("sensor.sh_entity_status_suppressed_list")
+    assert state is not None
     assert state.state == "2"
 
     state = hass.states.get("sensor.sh_entity_status_heartbeat")
+    assert state is not None
     assert state.state == "active"
 
 
@@ -243,24 +276,28 @@ async def test_list_sensor_simplified_attributes(
         await hass.async_block_till_done()
 
     # Unsuppressed list — simplified attribute names
-    state = hass.states.get("sensor.sh_entity_status_unsuppressed_unavailable_list")
+    state = hass.states.get("sensor.sh_entity_status_unsuppressed_list")
     assert state is not None
     attrs = state.attributes
     assert "devices" in attrs
     assert "entities" in attrs
     assert attrs["devices"] == [device]
     assert attrs["entities"] == [entity]
+    assert attrs["devices_count"] == 1
+    assert attrs["entities_count"] == 1
     # Old keys must not exist
     assert "unsuppressed_unavailable_devices" not in attrs
     assert "unsuppressed_orphaned_unavailable_entities" not in attrs
 
     # Suppressed list — same simplified structure
-    state = hass.states.get("sensor.sh_entity_status_suppressed_unavailable_list")
+    state = hass.states.get("sensor.sh_entity_status_suppressed_list")
     assert state is not None
     attrs = state.attributes
     assert "devices" in attrs
     assert "entities" in attrs
     assert attrs["devices"] == [device]
     assert attrs["entities"] == [entity]
+    assert attrs["devices_count"] == 1
+    assert attrs["entities_count"] == 1
     assert "suppressed_unavailable_devices" not in attrs
     assert "suppressed_orphaned_unavailable_entities" not in attrs

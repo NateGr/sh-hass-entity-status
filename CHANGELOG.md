@@ -13,6 +13,8 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 - Added `mypy` and `pytest-cov` to pinned test dependencies.
 
 ### Changed
+- Consolidated unavailable count and list sensors into `unsuppressed_list` and `suppressed_list`, preserving counts as list-sensor states and attributes.
+- Migrated existing list entity IDs and removed the retired count entities from the entity registry.
 - Expanded CI to run Ruff lint, Ruff format check, mypy type checking, and pytest coverage reporting.
 - Updated the open source readiness checklist to reflect completed CI, HACS, security, and governance setup.
 - Refined coordinator and sensor typing to satisfy stricter static analysis in CI.

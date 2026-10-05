@@ -25,11 +25,9 @@ SmartHass Entity Status is a Home Assistant custom integration that monitors ent
 │                             │         │                         │
 │                             ▼         ▼                         │
 │              ┌──────────────────────────────────────┐           │
-│              │  Entities (4 sensors + 1 button)      │           │
-│              │  unsuppressed_unavailable_count       │           │
-│              │  suppressed_unavailable_count         │           │
-│              │  unsuppressed_unavailable_list        │           │
-│              │  suppressed_unavailable_list          │           │
+│              │  Entities (2 sensors + 1 button)      │           │
+│              │  unsuppressed_list                    │           │
+│              │  suppressed_list                      │           │
 │              │  refresh_registry button              │           │
 │              └──────────────────────────────────────┘           │
 │                                                                 │
@@ -47,7 +45,7 @@ SmartHass Entity Status is a Home Assistant custom integration that monitors ent
 | `const.py` | Single source of truth for domain slug and config key names / defaults |
 | `config_flow.py` | UI wizard for initial setup and options editing; voluptuous schema validation |
 | `coordinator.py` | Registry refresh, unavailability poll, suppression logic, event subscriptions |
-| `sensor.py` | 4 `CoordinatorEntity` sensors that read `coordinator.data` |
+| `sensor.py` | 2 `CoordinatorEntity` sensors that read `coordinator.data` |
 | `button.py` | 1 button entity for immediate registry rebuild |
 | `services.py` | Registers/unregisters 3 HA services |
 | `__init__.py` | Wires everything together: setup, teardown, platform forwarding |
