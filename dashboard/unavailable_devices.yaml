@@ -17,19 +17,19 @@ views:
               grid_rows: auto
             color: >-
               {{ iif(
-              states('sensor.sh_entity_status_unsuppressed_unavailable_count') |
+              states('sensor.sh_entity_status_unsuppressed_list') |
               int > 0,"red") }}
             features_position: bottom
             secondary: >
               {% set items =
-              state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list',
+              state_attr('sensor.sh_entity_status_unsuppressed_list',
               'devices') or [] %}
 
               {% set devices = items | map('combine',{'type': 'device'}) | list
               %}
 
               {% set items =
-              state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list',
+              state_attr('sensor.sh_entity_status_unsuppressed_list',
               'entities') or [] %}
 
               {% set entities = items | map('combine',{'type': 'entity'}) | list
@@ -62,14 +62,14 @@ views:
           - type: markdown
             content: >
               {% set items =
-              state_attr('sensor.sh_entity_status_suppressed_unavailable_list',
+              state_attr('sensor.sh_entity_status_suppressed_list',
               'devices') or [] %}
 
               {% set devices = items | map('combine',{'type': 'device'}) |
               sort(attribute='display_name') | list %}
 
               {% set items =
-              state_attr('sensor.sh_entity_status_suppressed_unavailable_list',
+              state_attr('sensor.sh_entity_status_suppressed_list',
               'entities') or [] %}
 
               {% set entities = items | map('combine',{'type': 'entity'}) | list
@@ -87,14 +87,14 @@ views:
               #### Suppress Devices
 
               {% set items =
-              state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list',
+              state_attr('sensor.sh_entity_status_unsuppressed_list',
               'devices') or [] %}
 
               {% set devices = items | map('combine',{'type': 'device'}) | list
               %}
 
               {% set items =
-              state_attr('sensor.sh_entity_status_unsuppressed_unavailable_list',
+              state_attr('sensor.sh_entity_status_unsuppressed_list',
               'entities') or [] %}
 
               {% set entities = items | map('combine',{'type': 'entity'}) | list
@@ -109,7 +109,7 @@ views:
               {% endfor %}
             visibility:
               - condition: numeric_state
-                entity: sensor.sh_entity_status_unsuppressed_unavailable_count
+                entity: sensor.sh_entity_status_unsuppressed_list
                 above: 0
     subview: true
     max_columns: 1

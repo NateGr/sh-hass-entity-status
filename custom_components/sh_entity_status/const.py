@@ -5,7 +5,7 @@ DOMAIN = "sh_entity_status"
 INTEGRATION_NAME = "SmartHass Entity Status"
 
 # Slug prefix stamped onto every sensor's entity_id to group all integration
-# entities together in the HA registry (e.g. sensor.sh_entity_status_unavailable_count).
+# entities together in the HA registry (e.g. sensor.sh_entity_status_unsuppressed_list).
 # To rebrand: change this string — but note existing deployments will need their
 # entities removed and re-added (or manually renamed in HA) after any change.
 # To use bare names with no prefix: set ENTITY_ID_PREFIX = ""
