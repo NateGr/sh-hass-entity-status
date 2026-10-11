@@ -9,3 +9,7 @@ poll_unavailable:
 reload:
   name: Reload
   description: Reloads all SmartHass Entity Status config entries. Useful after changing configuration options.
+
+get_registry:
+  name: Get Registry
+  description: Returns the complete cached device and entity mapping for every loaded integration entry as response data, including available and suppressed items. Request a response when calling this action; no entity is created or updated.

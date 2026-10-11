@@ -1,6 +1,7 @@
 """Tests for the SH Entity Status coordinator unavailable model."""
 
-from datetime import timedelta
+import json
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 from custom_components.sh_entity_status.coordinator import (
@@ -32,7 +33,82 @@ def _make_coordinator(
     coord._orphan_entities = orphans or []
     coord._downtime_start = {}
     coord._last_downtime_duration = None
+    coord._last_registry_refresh = None
     return coord
+
+
+def test_registry_snapshot_empty() -> None:
+    """An empty cache still returns a complete JSON-compatible document."""
+    result = _make_coordinator().async_get_registry()
+
+    assert result == {
+        "last_registry_refresh": None,
+        "devices_count": 0,
+        "entities_count": 0,
+        "devices": [],
+        "orphan_entities": [],
+    }
+    assert json.loads(json.dumps(result)) == result
+
+
+def test_registry_snapshot_complete_and_independent() -> None:
+    """Export all mapped items without filtering or sharing mutable cache data."""
+    entities = [
+        {
+            "entity_id": "sensor.available",
+            "device_id": "dev1",
+            "labels": [],
+            "label_map": {"ignore_unavailable": False},
+        },
+        {
+            "entity_id": "sensor.unavailable",
+            "device_id": "dev1",
+            "labels": ["ignore_unavailable"],
+            "label_map": {"ignore_unavailable": True},
+        },
+    ]
+    devices = {
+        "dev1": {
+            "id": "dev1",
+            "name": "Device",
+            "display_name": "Device (Kitchen)",
+            "area_id": "kitchen",
+            "area_name": "Kitchen",
+            "labels": ["ignore_unavailable"],
+            "label_map": {"ignore_unavailable": True},
+            "entities": entities,
+        }
+    }
+    orphans = [
+        {"entity_id": "input_boolean.helper", "device_id": None, "labels": []},
+        {"entity_id": "sensor.missing_device", "device_id": "missing", "labels": []},
+    ]
+    coord = _make_coordinator(
+        states=[
+            _make_state("sensor.available", "on"),
+            _make_state("sensor.unavailable"),
+            _make_state("sensor.unmapped"),
+        ],
+        devices=devices,
+        orphans=orphans,
+    )
+    coord._last_registry_refresh = datetime(2026, 3, 1, tzinfo=timezone.utc)
+
+    result = coord.async_get_registry()
+
+    assert result["devices_count"] == 1
+    assert result["entities_count"] == 4
+    assert result["last_registry_refresh"] == "2026-03-01T00:00:00+00:00"
+    assert result["devices"] == list(devices.values())
+    assert result["orphan_entities"] == orphans
+    assert json.loads(json.dumps(result)) == result
+
+    result["devices"][0]["entities"][0]["labels"].append("new")
+    result["devices"][0]["label_map"]["ignore_unavailable"] = False
+    result["orphan_entities"][0]["labels"].append("new")
+    assert entities[0]["labels"] == []
+    assert devices["dev1"]["label_map"]["ignore_unavailable"] is True
+    assert orphans[0]["labels"] == []
 
 
 def test_unsuppressed_device_and_orphan_counts() -> None:

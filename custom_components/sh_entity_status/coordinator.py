@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -404,6 +405,24 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     # ------------------------------------------------------------------
     # Public helpers
     # ------------------------------------------------------------------
+
+    @callback
+    def async_get_registry(self) -> dict[str, Any]:
+        """Return an independent, JSON-compatible snapshot of the mapped hierarchy."""
+        devices = deepcopy(list(self._devices.values()))
+        orphan_entities = deepcopy(self._orphan_entities)
+        return {
+            "last_registry_refresh": (
+                self._last_registry_refresh.isoformat()
+                if self._last_registry_refresh is not None
+                else None
+            ),
+            "devices_count": len(devices),
+            "entities_count": sum(len(device["entities"]) for device in devices)
+            + len(orphan_entities),
+            "devices": devices,
+            "orphan_entities": orphan_entities,
+        }
 
     async def async_refresh_registry(self) -> None:
         """Public API to trigger a registry refresh (used by service)."""
