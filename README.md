@@ -130,8 +130,138 @@ Same structure with `devices` and `entities` keys (the sensor **state** — `sup
 | `sh_entity_status.refresh_registry` | Rebuild the in-memory device/entity/label hierarchy immediately (also available as a button entity) |
 | `sh_entity_status.poll_unavailable` | Immediately re-poll for unavailable entities                                                        |
 | `sh_entity_status.reload`           | Reload all SmartHass Entity Status config entries                                                   |
+| `sh_entity_status.get_registry`     | Return the complete mapped device/entity hierarchy as response data (no entity storage)            |
 
 Services are also visible and callable from **Developer Tools → Actions** in the HA UI.
+
+### Export all mapped devices and entities
+
+`sh_entity_status.get_registry` is a **response-only action** with no input fields.
+It returns a JSON-compatible object directly to the caller, without creating an
+entity, updating sensor attributes, or writing the document to Home Assistant's
+state/history.
+
+The response includes **all mapped items**, regardless of availability or
+suppression, including disabled registered entities. Each mapped device contains
+its entities; entities without a valid parent device are in `orphan_entities`.
+Devices without registered entities and state-only entities outside the entity
+registry are not part of the integration's mapping.
+
+This is a snapshot of the existing in-memory mapping, not a live state export.
+For a fresh registry snapshot, call `sh_entity_status.refresh_registry` first and
+wait for it to finish. `last_registry_refresh` is an ISO 8601 UTC timestamp (or
+`null` if the mapping has not yet been built).
+
+#### Home Assistant action
+
+Capture the response in an automation or script:
+
+```yaml
+- action: sh_entity_status.get_registry
+  response_variable: mapped_registry
+```
+
+The result is available as `mapped_registry.entries`. Calls must request response
+data; calling this action without requesting a response is rejected.
+
+#### REST API / Node-RED
+
+Use Home Assistant's existing authenticated service API:
+
+```text
+POST /api/services/sh_entity_status/get_registry?return_response
+Content-Type: application/json
+
+{}
+```
+
+In Node-RED, configure an **HTTP Request** node with this URL on your Home
+Assistant server, method `POST`, an empty JSON object as the request payload, and
+the content-type header above. Set the `Authorization` header to `Bearer` followed
+by a space and your Home Assistant access token. Configure the response as a parsed
+JSON object. Keep the access token in secure credentials, not exported flow JSON.
+Use HTTPS when accessing Home Assistant over an untrusted network.
+
+Home Assistant wraps the action response in `service_response`; the mapping is
+therefore at **`msg.payload.service_response`**. The `changed_states` array is
+normally empty because this action does not change entity states. Omitting
+`?return_response` results in HTTP 400.
+
+#### Response format
+
+The action response (the REST API's `service_response` object) has this shape:
+
+```json
+{
+  "schema_version": 1,
+  "entries": {
+    "example_config_entry_id": {
+      "last_registry_refresh": "2026-03-01T12:00:00+00:00",
+      "devices_count": 1,
+      "entities_count": 2,
+      "devices": [
+        {
+          "id": "abc123",
+          "name": "Kitchen Light",
+          "display_name": "Kitchen Light (Kitchen)",
+          "area_id": "kitchen",
+          "area_name": "Kitchen",
+          "labels": [],
+          "label_map": {"ignore_unavailable": false},
+          "entities": [
+            {
+              "entity_id": "light.kitchen",
+              "name": "Kitchen Light",
+              "display_name": "Kitchen Light",
+              "device_id": "abc123",
+              "area_id": null,
+              "area_name": "",
+              "labels": [],
+              "label_map": {"ignore_unavailable": false}
+            }
+          ]
+        }
+      ],
+      "orphan_entities": [
+        {
+          "entity_id": "input_boolean.vacation_mode",
+          "name": "Vacation Mode",
+          "display_name": "Vacation Mode",
+          "device_id": null,
+          "area_id": null,
+          "area_name": "",
+          "labels": [],
+          "label_map": {"ignore_unavailable": false}
+        }
+      ]
+    }
+  }
+}
+```
+
+- `entries` is keyed by config entry ID and includes every loaded integration
+  entry, keeping the same shape for one or multiple entries.
+- `devices_count` counts mapped devices; `entities_count` counts both device-linked
+  and orphaned entities. Empty mappings return empty arrays and zero counts.
+- Entity areas/labels are their own registry assignments, not inherited device
+  values. `label_map` contains every known label ID with an explicit boolean.
+- Orphans with a missing parent retain the original `device_id`; they are still
+  returned in `orphan_entities`.
+
+For example, a Node-RED **Function** node can flatten the REST response into lists:
+
+```javascript
+const entries = Object.values(msg.payload.service_response.entries);
+msg.devices = entries.flatMap(entry => entry.devices);
+msg.entities = entries.flatMap(entry => [
+    ...entry.devices.flatMap(device => device.entities),
+    ...entry.orphan_entities
+]);
+return msg;
+```
+
+Multiple integration entries map the same Home Assistant registry, so choose one
+entry (or deduplicate by device `id` / `entity_id`) when combining their lists.
 
 ---
 

@@ -45,7 +45,7 @@ All tests should pass. The suite covers:
 - Coordinator logic (device + orphaned entity categorization)
 - Sensor creation, unique IDs, and state updates
 - Button entity creation and press behavior
-- Services (`refresh_registry`, `poll_unavailable`)
+- Services (`refresh_registry`, `poll_unavailable`, response-only `get_registry`)
 
 ---
 
@@ -73,7 +73,7 @@ custom_components/sh_entity_status/
 ├── coordinator.py     SHEntityStatusCoordinator — registry + poll logic
 ├── sensor.py          4 CoordinatorEntity sensors
 ├── button.py          Refresh Registry button entity
-├── services.py        3 HA services
+├── services.py        4 HA services, including a response-only registry export
 ├── services.yaml      HA service metadata (name + description)
 ├── manifest.json      Integration manifest
 ├── strings.json       UI strings (source of truth)

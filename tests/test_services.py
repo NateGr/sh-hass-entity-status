@@ -4,12 +4,14 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import voluptuous as vol
 from homeassistant.core import HomeAssistant, SupportsResponse
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import label_registry as lr
+from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.sh_entity_status.const import DOMAIN
@@ -205,7 +207,7 @@ async def test_get_registry_requires_response(hass: HomeAssistant) -> None:
 
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(DOMAIN, "get_registry", blocking=True)
-    with pytest.raises(ServiceValidationError):
+    with pytest.raises(vol.Invalid):
         await hass.services.async_call(
             DOMAIN,
             "get_registry",
@@ -225,3 +227,39 @@ async def test_get_registry_empty_and_unload(hass: HomeAssistant) -> None:
 
     await async_unload_services(hass)
     assert not hass.services.has_service(DOMAIN, "get_registry")
+
+
+async def test_get_registry_rest_api(
+    hass: HomeAssistant, hass_client, config_entry: MockConfigEntry
+) -> None:
+    """Node-RED can fetch the JSON document through the native service REST API."""
+    hass.data[DOMAIN] = {
+        config_entry.entry_id: SHEntityStatusCoordinator(hass, config_entry)
+    }
+    await async_setup_services(hass)
+    assert await async_setup_component(hass, "api", {})
+    client = await hass_client()
+
+    response = await client.post(
+        "/api/services/sh_entity_status/get_registry?return_response", json={}
+    )
+
+    assert response.status == 200
+    document = await response.json()
+    assert document["changed_states"] == []
+    assert document["service_response"] == {
+        "schema_version": 1,
+        "entries": {
+            config_entry.entry_id: {
+                "last_registry_refresh": None,
+                "devices_count": 0,
+                "entities_count": 0,
+                "devices": [],
+                "orphan_entities": [],
+            }
+        },
+    }
+    response_without_request = await client.post(
+        "/api/services/sh_entity_status/get_registry", json={}
+    )
+    assert response_without_request.status == 400
