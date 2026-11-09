@@ -48,7 +48,7 @@
 - **Multiple ignore labels with ANY / ALL logic** — e.g. suppress if entity has _any_ of a configured label set, or suppress only if it has _all_ of them.
 - **Verbose unavailable hierarchy service/API** — add a service or API endpoint that returns the full unavailable hierarchy (devices with child entities, orphaned entities, and suppression status) for external automation tools like Node-RED.
 - **Auto-reload by label** — support reloading integrations/devices/entities that carry a configurable label (e.g. `auto_reload`), including options flow settings to enable/disable the feature, configure the label name and how long to wait before reloading the device (incase it is a temporary offline).
-- **Auto increment Manifest version to match github version** - Implement a mechanism that will auto update the manifest version to match the release version.
+- ~~**Auto increment Manifest version to match github version**~~ — done: the Release workflow bumps `manifest.json` in the tagged release commit.
 
 ### Medium Priority
 

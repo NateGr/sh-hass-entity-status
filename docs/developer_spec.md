@@ -14,13 +14,7 @@ python -m pytest tests/ -v
 ```
 
 4. Push your branch and open a pull request.
-5. If you are preparing a release from your fork, use `release.sh`:
-
-```bash
-./release.sh 1.2.3
-```
-
-`release.sh` requires GitHub CLI (`gh`) and dispatches the `publish.yml` workflow with the version you provide.
+5. Releases are cut by maintainers from the **Release** workflow (see [`release_setup.md`](release_setup.md)).
 
 ## Development Environment Setup
 
