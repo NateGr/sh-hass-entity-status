@@ -9,14 +9,18 @@ on:
         options: [patch, minor, major]
         default: patch
       version:
-        description: Optional explicit new version (X.Y.Z)
+        description: Optional stable version or prerelease target (X.Y.Z)
         type: string
+      prerelease:
+        description: Publish a test prerelease without changing main
+        type: boolean
+        default: false
       dry-run:
         description: Validate without pushing or publishing
         type: boolean
         default: false
       recover-version:
-        description: Recover publication of an existing release tag (X.Y.Z; no bump)
+        description: Recover an existing release tag (e.g. 1.2.3 or 1.2.3rc1)
         type: string
 
 permissions:
@@ -27,13 +31,100 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check-context:
+    name: Check release request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check branch and mode
+        env:
+          RELEASE_REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          RECOVER_VERSION: ${{ inputs.recover-version }}
+        run: |
+          [[ "$REPOSITORY" == "NateGr/sh-hass-entity-status" ]] || { echo "Release is restricted to the upstream repository."; exit 1; }
+          if [[ "$RELEASE_REF" != "refs/heads/main" ]]; then
+            [[ "$RELEASE_REF" == refs/heads/* && "$DRY_RUN" == "true" ]] || { echo "Non-main branches only support dry runs."; exit 1; }
+            [[ -z "$RECOVER_VERSION" ]] || { echo "Recovery must run from main."; exit 1; }
+          fi
+
+  branch-dry-run:
+    name: Validate branch release candidate
+    needs: check-context
+    if: ${{ github.ref != 'refs/heads/main' && inputs.dry-run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out branch commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Select candidate version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUMP: ${{ inputs.bump }}
+          VERSION: ${{ inputs.version }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          gh api "repos/$GH_REPO/releases?per_page=100" --paginate --slurp > "$RUNNER_TEMP/releases.json"
+          args=(prepare --bump "$BUMP" --version "$VERSION" --releases "$RUNNER_TEMP/releases.json")
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          python scripts/release.py "${args[@]}"
+
+      - name: Create local release candidate
+        id: candidate
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "smarthass-release[bot]"
+          git config user.email "smarthass-release[bot]@users.noreply.github.com"
+          git add custom_components/sh_entity_status/manifest.json
+          git -c commit.gpgsign=false commit -m "Release v$VERSION" -m "SmartHass-Release: $VERSION"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate exact release candidate
+        uses: ./.github/actions/validate
+
+      - name: Verify and report candidate
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CANDIDATE: ${{ steps.candidate.outputs.sha }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          [[ "$(git rev-parse HEAD)" == "$CANDIDATE" ]] || { echo "Validation changed the candidate commit."; exit 1; }
+          git diff --exit-code
+          git diff --cached --exit-code
+          {
+            echo "Version: v$VERSION"
+            echo "Validated local commit: $CANDIDATE"
+            echo "Dry run: true"
+            echo "Prerelease: $PRERELEASE"
+            echo "No commit, tag, or release was published."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   prepare:
     name: Validate and tag
+    needs: check-context
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment: release
     outputs:
       version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
       candidate: ${{ steps.candidate.outputs.sha }}
     steps:
       - name: Check release context
@@ -74,12 +165,17 @@ jobs:
           BUMP: ${{ inputs.bump }}
           VERSION: ${{ inputs.version }}
           RECOVER_VERSION: ${{ inputs.recover-version }}
+          PRERELEASE: ${{ inputs.prerelease }}
         run: |
           if [[ -n "$RECOVER_VERSION" ]]; then
             python scripts/release.py recover --version "$RECOVER_VERSION"
           else
             gh api "repos/$GH_REPO/releases?per_page=100" --paginate --slurp > "$RUNNER_TEMP/releases.json"
-            python scripts/release.py prepare --bump "$BUMP" --version "$VERSION" --releases "$RUNNER_TEMP/releases.json"
+            args=(prepare --bump "$BUMP" --version "$VERSION" --releases "$RUNNER_TEMP/releases.json")
+            if [[ "$PRERELEASE" == "true" ]]; then
+              args+=(--prerelease)
+            fi
+            python scripts/release.py "${args[@]}"
           fi
 
       - name: Create local release commit or check out recovery commit
@@ -121,13 +217,14 @@ jobs:
           repositories: sh-hass-entity-status
           permission-contents: write
 
-      - name: Push validated commit and tag atomically
+      - name: Push validated release
         if: ${{ !inputs.dry-run && inputs.recover-version == '' }}
         env:
           APP_TOKEN: ${{ steps.app.outputs.token }}
           BASE_COMMIT: ${{ steps.base.outputs.sha }}
           CANDIDATE: ${{ steps.candidate.outputs.sha }}
           VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: |
           git fetch origin refs/heads/main:refs/remotes/origin/main --tags
           [[ "$(git rev-parse origin/main)" == "$BASE_COMMIT" ]] || { echo "main advanced during validation; rerun Release."; exit 1; }
@@ -136,18 +233,24 @@ jobs:
           git tag -a "v$VERSION" "$CANDIDATE" -m "Release v$VERSION"
           authorization=$(printf 'x-access-token:%s' "$APP_TOKEN" | base64 -w0)
           echo "::add-mask::$authorization"
-          git -c credential.helper= -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $authorization" push --atomic origin "HEAD:refs/heads/main" "refs/tags/v$VERSION"
+          if [[ "$PRERELEASE" == "true" ]]; then
+            git -c credential.helper= -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $authorization" push origin "refs/tags/v$VERSION"
+          else
+            git -c credential.helper= -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $authorization" push --atomic origin "HEAD:refs/heads/main" "refs/tags/v$VERSION"
+          fi
 
       - name: Report validated candidate
         env:
           VERSION: ${{ steps.version.outputs.version }}
           CANDIDATE: ${{ steps.candidate.outputs.sha }}
           DRY_RUN: ${{ inputs.dry-run }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: |
           {
             echo "Version: v$VERSION"
             echo "Validated commit: $CANDIDATE"
             echo "Dry run: $DRY_RUN"
+            echo "Prerelease: $PRERELEASE"
           } >> "$GITHUB_STEP_SUMMARY"
 
   publish:
@@ -166,18 +269,23 @@ jobs:
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ needs.prepare.outputs.version }}
           CANDIDATE: ${{ needs.prepare.outputs.candidate }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
         run: |
           tag="v$VERSION"
           tag_object=$(gh api "repos/$GH_REPO/git/ref/tags/$tag" --jq '.object.sha')
           tag_commit=$(gh api "repos/$GH_REPO/git/tags/$tag_object" --jq '.object.sha')
           [[ "$tag_commit" == "$CANDIDATE" ]] || { echo "Tag no longer matches the validated candidate."; exit 1; }
           if gh release view "$tag" --json isDraft,isPrerelease,url > "$RUNNER_TEMP/release.json"; then
-            if jq -e '.isDraft or .isPrerelease' "$RUNNER_TEMP/release.json" > /dev/null; then
-              echo "An existing draft or prerelease conflicts with this stable release."
+            if ! jq -e --argjson prerelease "$PRERELEASE" '(.isDraft | not) and (.isPrerelease == $prerelease)' "$RUNNER_TEMP/release.json" > /dev/null; then
+              echo "An existing draft or release of a different type conflicts with this release."
               exit 1
             fi
             url=$(jq -r '.url' "$RUNNER_TEMP/release.json")
           else
-            url=$(gh release create "$tag" --verify-tag --target "$CANDIDATE" --title "$tag" --generate-notes --latest)
+            if [[ "$PRERELEASE" == "true" ]]; then
+              url=$(gh release create "$tag" --verify-tag --target "$CANDIDATE" --title "$tag" --generate-notes --prerelease --latest=false)
+            else
+              url=$(gh release create "$tag" --verify-tag --target "$CANDIDATE" --title "$tag" --generate-notes --latest)
+            fi
           fi
           echo "Published release: $url" >> "$GITHUB_STEP_SUMMARY"
