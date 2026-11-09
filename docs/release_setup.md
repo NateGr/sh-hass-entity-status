@@ -19,6 +19,8 @@ The workflow validates a separate candidate commit whose manifest contains the p
 
 Use `dry-run` to validate without pushing or publishing. If publishing fails after a prerelease tag is pushed, use `recover-version` with the full version, for example `1.0.12rc1`; the workflow determines the release type from the version and validates the tagged candidate again.
 
+To test a change before merging, run **Actions → Release → Run workflow**, select the feature branch, and enable `dry-run`. Enable `prerelease` to test prerelease version selection, or leave it off to test stable version selection. The branch dry run creates and validates a local candidate using the same release script and validation action, but it does not use the protected release environment or its App credentials, push a commit or tag, or publish a release. The candidate is based on the selected branch, not `main`; the actual push, token, and publication paths are not tested. Non-dry runs and recovery remain restricted to `main`.
+
 Replaces: `publish.yml`, `tag_release_pr_merge.yml`, `hacs.yml` (folded into the validate action), and `release.sh`. No more release PRs or ZIP asset; HACS installs from the tag (`hacs.json` has no `zip_release`).
 
 ## Manual implementation plan (cannot be automated from code)

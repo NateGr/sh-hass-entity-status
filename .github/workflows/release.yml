@@ -31,8 +31,94 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check-context:
+    name: Check release request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check branch and mode
+        env:
+          RELEASE_REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          RECOVER_VERSION: ${{ inputs.recover-version }}
+        run: |
+          [[ "$REPOSITORY" == "NateGr/sh-hass-entity-status" ]] || { echo "Release is restricted to the upstream repository."; exit 1; }
+          if [[ "$RELEASE_REF" != "refs/heads/main" ]]; then
+            [[ "$RELEASE_REF" == refs/heads/* && "$DRY_RUN" == "true" ]] || { echo "Non-main branches only support dry runs."; exit 1; }
+            [[ -z "$RECOVER_VERSION" ]] || { echo "Recovery must run from main."; exit 1; }
+          fi
+
+  branch-dry-run:
+    name: Validate branch release candidate
+    needs: check-context
+    if: ${{ github.ref != 'refs/heads/main' && inputs.dry-run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out branch commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Select candidate version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUMP: ${{ inputs.bump }}
+          VERSION: ${{ inputs.version }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          gh api "repos/$GH_REPO/releases?per_page=100" --paginate --slurp > "$RUNNER_TEMP/releases.json"
+          args=(prepare --bump "$BUMP" --version "$VERSION" --releases "$RUNNER_TEMP/releases.json")
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          python scripts/release.py "${args[@]}"
+
+      - name: Create local release candidate
+        id: candidate
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "smarthass-release[bot]"
+          git config user.email "smarthass-release[bot]@users.noreply.github.com"
+          git add custom_components/sh_entity_status/manifest.json
+          git -c commit.gpgsign=false commit -m "Release v$VERSION" -m "SmartHass-Release: $VERSION"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate exact release candidate
+        uses: ./.github/actions/validate
+
+      - name: Verify and report candidate
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CANDIDATE: ${{ steps.candidate.outputs.sha }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          [[ "$(git rev-parse HEAD)" == "$CANDIDATE" ]] || { echo "Validation changed the candidate commit."; exit 1; }
+          git diff --exit-code
+          git diff --cached --exit-code
+          {
+            echo "Version: v$VERSION"
+            echo "Validated local commit: $CANDIDATE"
+            echo "Dry run: true"
+            echo "Prerelease: $PRERELEASE"
+            echo "No commit, tag, or release was published."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   prepare:
     name: Validate and tag
+    needs: check-context
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment: release
