@@ -2,7 +2,7 @@
 
 ## How releases work
 
-Run **Actions → Release → Run workflow** on `main`. Inputs: `bump` (patch/minor/major), optional explicit `version`, `dry-run`, and `recover-version`.
+Run **Actions → Release → Run workflow** on `main`. Inputs: `bump` (patch/minor/major), optional explicit `version`, `prerelease`, `dry-run`, and `recover-version`.
 
 1. `prepare` job (protected by the `release` environment) freezes `main`, picks the next version (highest of `manifest.json` and published GitHub releases, via `scripts/release.py`), and creates a local commit that changes **only** `manifest.json` (`SmartHass-Release: X.Y.Z` trailer).
 2. The exact candidate is validated with the shared `.github/actions/validate` action (ruff, format, mypy, pytest + coverage, HACS) — the same action CI uses.
@@ -10,6 +10,14 @@ Run **Actions → Release → Run workflow** on `main`. Inputs: `bump` (patch/mi
 4. `publish` job verifies the tag still points at the validated commit and creates the GitHub release with generated notes.
 
 If publishing fails after the tag exists, rerun with `recover-version` set (no bump); `scripts/release.py recover` re-verifies the tagged commit.
+
+### Prereleases for testers
+
+A **prerelease** is a test version, not a production release. Select `prerelease` when running the workflow. It uses the chosen bump or explicit stable target version and numbers candidates automatically: for example, `1.0.12rc1`, then `1.0.12rc2`. Leave `version` blank to use the bump, or enter a target such as `1.0.12` (not the `rc` suffix).
+
+The workflow validates a separate candidate commit whose manifest contains the prerelease version, pushes only its annotated tag, and publishes a GitHub release marked as a prerelease. It does **not** update `main` or mark the prerelease as the latest stable release. Testers can enable the repository's **Pre-release** switch in HACS; the prerelease must be newer than the latest stable release to be offered. See [Home Assistant's prerelease guide](https://contributors.home-assistant.io/marketplace/guides/releases/#pre-releases). The next stable release still follows the normal version selection and publishing path.
+
+Use `dry-run` to validate without pushing or publishing. If publishing fails after a prerelease tag is pushed, use `recover-version` with the full version, for example `1.0.12rc1`; the workflow determines the release type from the version and validates the tagged candidate again.
 
 Replaces: `publish.yml`, `tag_release_pr_merge.yml`, `hacs.yml` (folded into the validate action), and `release.sh`. No more release PRs or ZIP asset; HACS installs from the tag (`hacs.json` has no `zip_release`).
 
