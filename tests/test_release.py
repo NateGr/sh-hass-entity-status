@@ -10,6 +10,7 @@ import pytest
 from scripts import release
 from scripts.release import (
     MANIFEST,
+    check_readiness,
     parse_release_version,
     parse_version,
     prepare,
@@ -79,8 +80,37 @@ def git_repository(tmp_path):
     path = tmp_path / MANIFEST
     path.parent.mkdir(parents=True)
     path.write_text(
-        json.dumps({"domain": "sh_entity_status", "version": "0.2.0"}), encoding="utf-8"
+        json.dumps(
+            {
+                "domain": "sh_entity_status",
+                "name": "SmartHass Entity Status",
+                "documentation": "https://github.com/NateGr/sh-hass-entity-status",
+                "issue_tracker": "https://github.com/NateGr/sh-hass-entity-status/issues",
+                "codeowners": ["@NateGr"],
+                "homeassistant": "2026.3.0",
+                "version": "0.2.0",
+            }
+        ),
+        encoding="utf-8",
     )
+    (path.parent / "__init__.py").write_text("", encoding="utf-8")
+    (path.parent / "brand").mkdir()
+    (path.parent / "brand" / "icon.png").write_bytes(b"fixture")
+    (tmp_path / "hacs.json").write_text(
+        json.dumps(
+            {
+                "name": "SmartHass Entity Status",
+                "content_in_root": False,
+                "homeassistant": "2026.3.0",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "requirements_test.txt").write_text(
+        "pytest-homeassistant-custom-component==0.13.316\n", encoding="utf-8"
+    )
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_integration.py").write_text("", encoding="utf-8")
     run_git(tmp_path, "init", "--initial-branch=main")
     run_git(tmp_path, "config", "user.name", "Release tests")
     run_git(tmp_path, "config", "user.email", "release-tests@example.invalid")
@@ -88,6 +118,88 @@ def git_repository(tmp_path):
     run_git(tmp_path, "add", ".")
     run_git(tmp_path, "commit", "-m", "Initial")
     return tmp_path
+
+
+@pytest.mark.parametrize("version", ["0.2.0", "0.2.1rc1"])
+def test_readiness_accepts_valid_versions(git_repository, version):
+    path = git_repository / MANIFEST
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest["version"] = version
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    check_readiness(git_repository)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["domain", "name", "documentation", "issue_tracker", "codeowners", "version"],
+)
+def test_readiness_rejects_invalid_manifest(git_repository, field):
+    path = git_repository / MANIFEST
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest[field] = "invalid"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError):
+        check_readiness(git_repository)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"name": "wrong"},
+        {"content_in_root": True},
+        {"homeassistant": "2026.4.0"},
+        {"homeassistant": ""},
+        {"zip_release": True},
+        {"filename": "integration.zip"},
+    ],
+)
+def test_readiness_rejects_invalid_hacs_metadata(git_repository, changes):
+    path = git_repository / "hacs.json"
+    metadata = json.loads(path.read_text(encoding="utf-8"))
+    metadata.update(changes)
+    path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError):
+        check_readiness(git_repository)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "custom_components/sh_entity_status/__init__.py",
+        "custom_components/sh_entity_status/brand/icon.png",
+        "tests/test_integration.py",
+        "requirements_test.txt",
+    ],
+)
+def test_readiness_rejects_missing_assets(git_repository, path):
+    (git_repository / path).unlink()
+    with pytest.raises((ValueError, OSError)):
+        check_readiness(git_repository)
+
+
+def test_readiness_requires_pinned_test_dependency(git_repository):
+    (git_repository / "requirements_test.txt").write_text(
+        "pytest-homeassistant-custom-component\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="Pin pytest"):
+        check_readiness(git_repository)
+
+
+def test_prepare_rejects_unready_repository(git_repository):
+    (git_repository / "hacs.json").unlink()
+    with pytest.raises(OSError):
+        prepare(git_repository, [], "patch", "")
+    assert (
+        json.loads((git_repository / MANIFEST).read_text(encoding="utf-8"))["version"]
+        == "0.2.0"
+    )
+
+
+def test_check_cli_reports_readiness(git_repository, monkeypatch, capsys):
+    monkeypatch.setattr(release, "ROOT", git_repository)
+    monkeypatch.setattr(sys, "argv", ["release.py", "check"])
+    release.main()
+    assert "Integration readiness checks passed" in capsys.readouterr().out
 
 
 def test_prepare_updates_only_version(git_repository):
