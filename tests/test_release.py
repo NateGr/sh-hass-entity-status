@@ -2,12 +2,15 @@
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+from scripts import release
 from scripts.release import (
     MANIFEST,
+    parse_release_version,
     parse_version,
     prepare,
     recover,
@@ -101,6 +104,65 @@ def test_prepare_rejects_existing_tag(git_repository):
         prepare(git_repository, [], "patch", "")
 
 
+def test_prepare_prerelease_numbers_existing_tags(git_repository):
+    run_git(git_repository, "tag", "v0.2.1rc1")
+    run_git(git_repository, "tag", "v0.2.1rc3")
+    run_git(git_repository, "tag", "v0.2.1rc-invalid")
+    assert prepare(git_repository, [], "patch", "", prerelease=True) == {
+        "version": "0.2.1rc4"
+    }
+    manifest = json.loads((git_repository / MANIFEST).read_text(encoding="utf-8"))
+    assert manifest["version"] == "0.2.1rc4"
+    assert (
+        run_git(git_repository, "show", "HEAD:" + MANIFEST.as_posix()).find(
+            '"version": "0.2.0"'
+        )
+        >= 0
+    )
+
+
+def test_prerelease_target_must_exceed_stable_baseline(git_repository):
+    with pytest.raises(ValueError, match="greater"):
+        prepare(git_repository, [], "patch", "0.2.0", prerelease=True)
+    assert prepare(git_repository, [], "minor", "", prerelease=True) == {
+        "version": "0.3.0rc1"
+    }
+
+
+def test_stable_release_can_follow_prerelease(git_repository):
+    run_git(git_repository, "tag", "v0.2.1rc1")
+    pages = [[{"tag_name": "v0.2.1rc1", "draft": False, "prerelease": True}]]
+    assert prepare(git_repository, pages, "patch", "") == {"version": "0.2.1"}
+
+
+def test_prepare_cli_outputs_prerelease(git_repository, tmp_path, monkeypatch, capsys):
+    releases = tmp_path / "releases.json"
+    releases.write_text("[]", encoding="utf-8")
+    output = tmp_path / "output"
+    monkeypatch.setattr(release, "ROOT", git_repository)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["release.py", "prepare", "--releases", str(releases), "--prerelease"],
+    )
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    release.main()
+    assert json.loads(capsys.readouterr().out) == {
+        "version": "0.2.1rc1",
+        "prerelease": "true",
+    }
+    assert output.read_text(encoding="utf-8").splitlines() == [
+        "version=0.2.1rc1",
+        "prerelease=true",
+    ]
+
+
+@pytest.mark.parametrize("version", ["0.2.1rc0", "0.2.1rc01", "0.2.1-rc.1"])
+def test_invalid_prerelease_versions(version):
+    with pytest.raises(ValueError):
+        parse_release_version(version)
+
+
 @pytest.fixture
 def released_repository(git_repository):
     prepare(git_repository, [], "patch", "")
@@ -132,6 +194,29 @@ def test_recovery_rejects_commit_outside_main(released_repository):
     run_git(released_repository, "update-ref", "refs/remotes/origin/main", "HEAD^")
     with pytest.raises(subprocess.CalledProcessError):
         recover(released_repository, "0.2.1")
+
+
+def test_recovery_of_tag_only_prerelease(git_repository):
+    run_git(git_repository, "update-ref", "refs/remotes/origin/main", "HEAD")
+    prepare(git_repository, [], "patch", "", prerelease=True)
+    run_git(git_repository, "add", MANIFEST.as_posix())
+    run_git(
+        git_repository,
+        "commit",
+        "-m",
+        "Release v0.2.1rc1\n\nSmartHass-Release: 0.2.1rc1",
+    )
+    run_git(git_repository, "tag", "-a", "v0.2.1rc1", "-m", "Release v0.2.1rc1")
+    candidate = run_git(git_repository, "rev-parse", "HEAD")
+    assert recover(git_repository, "0.2.1rc1") == {
+        "version": "0.2.1rc1",
+        "candidate": candidate,
+    }
+    run_git(git_repository, "checkout", "--orphan", "unrelated")
+    run_git(git_repository, "commit", "--allow-empty", "-m", "Unrelated")
+    run_git(git_repository, "update-ref", "refs/remotes/origin/main", "HEAD")
+    with pytest.raises(subprocess.CalledProcessError):
+        recover(git_repository, "0.2.1rc1")
 
 
 @pytest.mark.parametrize(
