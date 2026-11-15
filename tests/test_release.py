@@ -87,7 +87,6 @@ def git_repository(tmp_path):
                 "documentation": "https://github.com/NateGr/sh-hass-entity-status",
                 "issue_tracker": "https://github.com/NateGr/sh-hass-entity-status/issues",
                 "codeowners": ["@NateGr"],
-                "homeassistant": "2026.3.0",
                 "version": "0.2.0",
             }
         ),
@@ -147,7 +146,6 @@ def test_readiness_rejects_invalid_manifest(git_repository, field):
     [
         {"name": "wrong"},
         {"content_in_root": True},
-        {"homeassistant": "2026.4.0"},
         {"homeassistant": ""},
         {"zip_release": True},
         {"filename": "integration.zip"},

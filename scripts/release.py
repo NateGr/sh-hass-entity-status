@@ -98,12 +98,9 @@ def check_readiness(root: Path) -> None:
     hacs = json.loads((root / "hacs.json").read_text(encoding="utf-8"))
     if hacs.get("name") != expected["name"] or hacs.get("content_in_root") is not False:
         raise ValueError("HACS metadata must match the integration name and layout.")
-    if (
-        not hacs.get("homeassistant")
-        or manifest.get("homeassistant") != hacs["homeassistant"]
-    ):
+    if not hacs.get("homeassistant"):
         raise ValueError(
-            "Manifest and HACS minimum Home Assistant versions must match."
+            "Set hacs.homeassistant to the minimum Home Assistant version."
         )
     if hacs.get("zip_release") or "filename" in hacs:
         raise ValueError("Use tagged repository files, not custom HACS ZIP releases.")
