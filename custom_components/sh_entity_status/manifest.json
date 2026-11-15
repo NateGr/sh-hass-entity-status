@@ -4,15 +4,14 @@
   "categories": [
     "helpers.calculate_value"
   ],
-  "version": "1.0.12",
-  "config_flow": true,
-  "documentation": "https://github.com/NateGr/sh-hass-entity-status",
-  "issue_tracker": "https://github.com/NateGr/sh-hass-entity-status/issues",
-  "dependencies": [],
   "codeowners": [
     "@NateGr"
   ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/NateGr/sh-hass-entity-status",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/NateGr/sh-hass-entity-status/issues",
   "requirements": [],
-  "iot_class": "local_poll",
-  "homeassistant": "2026.3.0"
+  "version": "1.0.12"
 }

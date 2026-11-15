@@ -76,9 +76,51 @@ def git(root: Path, *arguments: str) -> str:
     ).strip()
 
 
+def check_readiness(root: Path) -> None:
+    integration = root / MANIFEST.parent
+    if not (integration / "__init__.py").is_file():
+        raise ValueError("Missing integration __init__.py.")
+    manifest = json.loads((root / MANIFEST).read_text(encoding="utf-8"))
+    expected = {
+        "domain": "sh_entity_status",
+        "name": "SmartHass Entity Status",
+        "documentation": "https://github.com/NateGr/sh-hass-entity-status",
+        "issue_tracker": "https://github.com/NateGr/sh-hass-entity-status/issues",
+    }
+    for key, value in expected.items():
+        if manifest.get(key) != value:
+            raise ValueError(f"manifest.{key} must be {value!r}.")
+    parse_release_version(manifest["version"])
+    if "@NateGr" not in manifest.get("codeowners", []):
+        raise ValueError("manifest.codeowners must include @NateGr.")
+    if not (integration / "brand" / "icon.png").is_file():
+        raise ValueError("Missing integration brand/icon.png required for HACS.")
+    hacs = json.loads((root / "hacs.json").read_text(encoding="utf-8"))
+    if hacs.get("name") != expected["name"] or hacs.get("content_in_root") is not False:
+        raise ValueError("HACS metadata must match the integration name and layout.")
+    if not hacs.get("homeassistant"):
+        raise ValueError(
+            "Set hacs.homeassistant to the minimum Home Assistant version."
+        )
+    if hacs.get("zip_release") or "filename" in hacs:
+        raise ValueError("Use tagged repository files, not custom HACS ZIP releases.")
+    if not any(
+        path.name != "test_release.py" for path in (root / "tests").rglob("test_*.py")
+    ):
+        raise ValueError("Integration tests are required.")
+    requirements = (root / "requirements_test.txt").read_text(encoding="utf-8")
+    if not re.search(
+        r"^pytest-homeassistant-custom-component==\S+$", requirements, re.MULTILINE
+    ):
+        raise ValueError(
+            "Pin pytest-homeassistant-custom-component in requirements_test.txt."
+        )
+
+
 def prepare(
     root: Path, pages: list, bump: str, override: str, prerelease: bool = False
 ) -> dict[str, str]:
+    check_readiness(root)
     manifest_path = root / MANIFEST
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     version = select_version(
@@ -140,13 +182,17 @@ def recover(root: Path, version: str) -> dict[str, str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["prepare", "recover"])
+    parser.add_argument("command", choices=["check", "prepare", "recover"])
     parser.add_argument("--bump", choices=["patch", "minor", "major"], default="patch")
     parser.add_argument("--version", default="")
     parser.add_argument("--releases", type=Path)
     parser.add_argument("--prerelease", action="store_true")
     arguments = parser.parse_args()
     try:
+        if arguments.command == "check":
+            check_readiness(ROOT)
+            print("Integration readiness checks passed.")
+            return
         if arguments.command == "recover":
             if arguments.prerelease:
                 raise ValueError("Recovery determines release type from the version.")

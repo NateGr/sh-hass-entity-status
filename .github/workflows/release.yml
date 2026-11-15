@@ -33,7 +33,7 @@ concurrency:
 jobs:
   check-context:
     name: Check release request
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Check branch and mode
@@ -42,29 +42,39 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           DRY_RUN: ${{ inputs.dry-run }}
           RECOVER_VERSION: ${{ inputs.recover-version }}
+          VERSION: ${{ inputs.version }}
+          PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
         run: |
           [[ "$REPOSITORY" == "NateGr/sh-hass-entity-status" ]] || { echo "Release is restricted to the upstream repository."; exit 1; }
           if [[ "$RELEASE_REF" != "refs/heads/main" ]]; then
             [[ "$RELEASE_REF" == refs/heads/* && "$DRY_RUN" == "true" ]] || { echo "Non-main branches only support dry runs."; exit 1; }
             [[ -z "$RECOVER_VERSION" ]] || { echo "Recovery must run from main."; exit 1; }
           fi
+          if [[ "$PRIVATE_REPOSITORY" == "true" && "$DRY_RUN" != "true" ]]; then
+            echo "Production releases require a public repository and HACS validation."
+            exit 1
+          fi
+          if [[ -n "$VERSION" && -n "$RECOVER_VERSION" ]]; then
+            echo "Choose a new version or recovery, not both."
+            exit 1
+          fi
 
   branch-dry-run:
     name: Validate branch release candidate
     needs: check-context
     if: ${{ github.ref != 'refs/heads/main' && inputs.dry-run }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
       - name: Check out branch commit
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: '3.13'
 
@@ -107,6 +117,7 @@ jobs:
           [[ "$(git rev-parse HEAD)" == "$CANDIDATE" ]] || { echo "Validation changed the candidate commit."; exit 1; }
           git diff --exit-code
           git diff --cached --exit-code
+          [[ -z "$(git ls-files --others --exclude-standard)" ]] || { echo "Unexpected untracked files after validation."; exit 1; }
           {
             echo "Version: v$VERSION"
             echo "Validated local commit: $CANDIDATE"
@@ -119,7 +130,7 @@ jobs:
     name: Validate and tag
     needs: check-context
     if: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     environment: release
     outputs:
@@ -142,14 +153,14 @@ jobs:
           fi
 
       - name: Check out frozen main commit
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: '3.13'
 
@@ -205,11 +216,12 @@ jobs:
           [[ "$(git rev-parse HEAD)" == "$CANDIDATE" ]] || { echo "Validation changed the candidate commit."; exit 1; }
           git diff --exit-code
           git diff --cached --exit-code
+          [[ -z "$(git ls-files --others --exclude-standard)" ]] || { echo "Unexpected untracked files after validation."; exit 1; }
 
       - name: Create narrowly scoped App token
         if: ${{ !inputs.dry-run && inputs.recover-version == '' }}
         id: app
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
         with:
           client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
@@ -257,7 +269,7 @@ jobs:
     name: Publish
     needs: prepare
     if: ${{ !inputs.dry-run }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: release
     permissions:
