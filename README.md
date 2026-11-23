@@ -1,9 +1,25 @@
+<p align="center">
+  <img src="custom_components/sh_entity_status/icon.png" alt="SmartHass Entity Status" width="96">
+</p>
+
+<p align="center">
+  <a href="https://github.com/NateGr/sh-hass-entity-status/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/NateGr/sh-hass-entity-status/ci.yml?branch=main&label=CI&logo=github" alt="CI status"></a>
+  <a href="https://github.com/NateGr/sh-hass-entity-status/releases/latest"><img src="https://img.shields.io/github/v/release/NateGr/sh-hass-entity-status?logo=github" alt="Latest release"></a>
+  <a href="https://github.com/NateGr/sh-hass-entity-status/releases"><img src="https://img.shields.io/github/downloads/NateGr/sh-hass-entity-status/total?logo=github&label=downloads" alt="GitHub downloads"></a>
+  <a href="https://hacs.xyz/"><img src="https://img.shields.io/badge/HACS-Custom-orange.svg?logo=homeassistantcommunitystore&logoColor=white" alt="HACS Custom"></a>
+  <a href="https://www.home-assistant.io/"><img src="https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-41BDF5?logo=homeassistant&logoColor=white" alt="Home Assistant 2026.3.0+"></a>
+  <a href="https://github.com/NateGr/sh-hass-entity-status/stargazers"><img src="https://img.shields.io/github/stars/NateGr/sh-hass-entity-status?style=flat&logo=github" alt="GitHub stars"></a>
+  <a href="https://github.com/NateGr/sh-hass-entity-status/issues"><img src="https://img.shields.io/github/issues/NateGr/sh-hass-entity-status" alt="Open issues"></a>
+  <a href="https://github.com/NateGr/sh-hass-entity-status/commits/main"><img src="https://img.shields.io/github/last-commit/NateGr/sh-hass-entity-status" alt="Last commit"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/NateGr/sh-hass-entity-status" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=NateGr&repository=sh-hass-entity-status&category=integration"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open in HACS"></a>
+  <a href="https://my.home-assistant.io/redirect/config_flow_start/?domain=sh_entity_status"><img src="https://my.home-assistant.io/badges/config_flow_start.svg" alt="Add integration"></a>
+</p>
+
 # SmartHass Entity Status
-[![HACS Badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![CI](https://github.com/NateGr/sh-hass-entity-status/actions/workflows/ci.yml/badge.svg)](https://github.com/NateGr/sh-hass-entity-status/actions/workflows/ci.yml)
-[![GitHub Release](https://img.shields.io/github/release/NateGr/sh-hass-entity-status.svg?style=flat-square)](https://github.com/NateGr/sh-hass-entity-status/releases)
-[![GitHub Downloads](https://img.shields.io/github/downloads/NateGr/sh-hass-entity-status/total.svg?style=flat-square)](https://github.com/NateGr/sh-hass-entity-status/releases)
-[![License](https://img.shields.io/github/license/NateGr/sh-hass-entity-status)](LICENSE)
 
 A Home Assistant custom integration that monitors entity availability across your entire HA instance and exposes configurable **suppression** — so that "expected" unavailability (a device under maintenance, a sensor you don't care about) doesn't pollute your dashboards or trigger false alerts.
 
