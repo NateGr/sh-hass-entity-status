@@ -98,7 +98,7 @@ def git_repository(tmp_path):
             {
                 "name": "SmartHass Entity Status",
                 "content_in_root": False,
-                "homeassistant": "2026.3.0",
+                "homeassistant": "2026.9.0",
             }
         ),
         encoding="utf-8",
@@ -178,6 +178,13 @@ def test_readiness_requires_pinned_test_dependency(git_repository):
         "pytest-homeassistant-custom-component\n", encoding="utf-8"
     )
     with pytest.raises(ValueError, match="Pin pytest"):
+        check_readiness(git_repository)
+
+
+def test_readiness_rejects_tooling_tests_without_integration_tests(git_repository):
+    (git_repository / "tests" / "test_integration.py").unlink()
+    (git_repository / "tests" / "test_ha_compatibility.py").write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="Integration tests"):
         check_readiness(git_repository)
 
 

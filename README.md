@@ -7,7 +7,7 @@
   <a href="https://github.com/NateGr/sh-hass-entity-status/releases/latest"><img src="https://img.shields.io/github/v/release/NateGr/sh-hass-entity-status?logo=github" alt="Latest release"></a>
   <a href="https://github.com/NateGr/sh-hass-entity-status/releases"><img src="https://img.shields.io/github/downloads/NateGr/sh-hass-entity-status/total?logo=github&label=downloads" alt="GitHub downloads"></a>
   <a href="https://hacs.xyz/"><img src="https://img.shields.io/badge/HACS-Custom-orange.svg?logo=homeassistantcommunitystore&logoColor=white" alt="HACS Custom"></a>
-  <a href="https://www.home-assistant.io/"><img src="https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-41BDF5?logo=homeassistant&logoColor=white" alt="Home Assistant 2026.3.0+"></a>
+  <a href="https://www.home-assistant.io/"><img src="https://img.shields.io/badge/Home%20Assistant-2026.9.0%2B-41BDF5?logo=homeassistant&logoColor=white" alt="Home Assistant 2026.9.0+"></a>
   <a href="https://github.com/NateGr/sh-hass-entity-status/stargazers"><img src="https://img.shields.io/github/stars/NateGr/sh-hass-entity-status?style=flat&logo=github" alt="GitHub stars"></a>
   <a href="https://github.com/NateGr/sh-hass-entity-status/issues"><img src="https://img.shields.io/github/issues/NateGr/sh-hass-entity-status" alt="Open issues"></a>
   <a href="https://github.com/NateGr/sh-hass-entity-status/commits/main"><img src="https://img.shields.io/github/last-commit/NateGr/sh-hass-entity-status" alt="Last commit"></a>

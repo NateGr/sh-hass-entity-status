@@ -8,7 +8,9 @@ runs:
       with:
         python-version: '3.14.2'
         cache: pip
-        cache-dependency-path: requirements_test.txt
+        cache-dependency-path: |
+          requirements_test.txt
+          requirements/latest/requirements.txt
     - name: Install test tools
       shell: bash
       run: python -m pip install -r requirements_test.txt
@@ -24,12 +26,29 @@ runs:
     - name: Type check
       shell: bash
       run: python -m mypy custom_components/sh_entity_status/ --ignore-missing-imports
-    - name: Test
+    - name: Verify minimum Home Assistant baseline
       shell: bash
-      run: python -m pytest tests/ --cov=scripts --cov=custom_components/sh_entity_status --cov-report=term-missing --cov-report="xml:${RUNNER_TEMP}/coverage.xml"
-    - name: Enforce integration coverage
+      run: python scripts/check_ha_compatibility.py minimum
+    - name: Test minimum Home Assistant
+      shell: bash
+      run: python -m pytest tests/ --cov=scripts --cov=custom_components/sh_entity_status --cov-report=term-missing --cov-report="xml:${RUNNER_TEMP}/coverage-minimum.xml"
+    - name: Enforce minimum integration coverage
       shell: bash
       run: python -m coverage report --include='*/custom_components/sh_entity_status/*' --fail-under=80
+    - name: Install latest fixture environment
+      shell: bash
+      run: |
+        python -m venv "$RUNNER_TEMP/ha-latest"
+        "$RUNNER_TEMP/ha-latest/bin/python" -m pip install -r requirements/latest/requirements.txt
+    - name: Verify latest fixture baseline
+      shell: bash
+      run: '"$RUNNER_TEMP/ha-latest/bin/python" scripts/check_ha_compatibility.py latest'
+    - name: Test latest fixture Home Assistant
+      shell: bash
+      run: '"$RUNNER_TEMP/ha-latest/bin/python" -m pytest tests/ --cov=scripts --cov=custom_components/sh_entity_status --cov-report=term-missing --cov-report="xml:${RUNNER_TEMP}/coverage-latest.xml"'
+    - name: Enforce latest integration coverage
+      shell: bash
+      run: '"$RUNNER_TEMP/ha-latest/bin/python" -m coverage report --include="*/custom_components/sh_entity_status/*" --fail-under=80'
     - name: Validate Home Assistant metadata
       uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361 # master
     - name: Validate public HACS repository

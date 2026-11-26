@@ -102,7 +102,8 @@ def check_readiness(root: Path) -> None:
         raise ValueError("Set hacs.homeassistant to the minimum Home Assistant version.")
     if hacs.get("zip_release") or "filename" in hacs:
         raise ValueError("Use tagged repository files, not custom HACS ZIP releases.")
-    if not any(path.name != "test_release.py" for path in (root / "tests").rglob("test_*.py")):
+    tooling_tests = {"test_release.py", "test_ha_compatibility.py"}
+    if not any(path.name not in tooling_tests for path in (root / "tests").rglob("test_*.py")):
         raise ValueError("Integration tests are required.")
     requirements = (root / "requirements_test.txt").read_text(encoding="utf-8")
     if not re.search(r"^pytest-homeassistant-custom-component==\S+$", requirements, re.MULTILINE):

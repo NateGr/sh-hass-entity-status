@@ -127,6 +127,7 @@ Config flow, sensor, and service tests use the `hass` fixture from `pytest-homea
 ## Linting / CI
 
 CI and the release workflow use the same validation action for readiness, Ruff
-lint and formatting, mypy, tests, integration-only coverage, hassfest, and public
-HACS validation. See [`release_setup.md`](release_setup.md) for the test stack
+lint and formatting, mypy, minimum and latest fixture-supported Home Assistant
+tests, integration-only coverage, hassfest, and public HACS validation. See
+[`release_setup.md`](release_setup.md) for both test stacks, update monitoring,
 and release safeguards.
