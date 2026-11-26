@@ -37,9 +37,7 @@ def config_entry() -> MockConfigEntry:
     return MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, entry_id="test_entry_id")
 
 
-async def test_sensors_created(
-    hass: HomeAssistant, config_entry: MockConfigEntry
-) -> None:
+async def test_sensors_created(hass: HomeAssistant, config_entry: MockConfigEntry) -> None:
     """Test sensor creation and migration of the previous entity IDs."""
     config_entry.add_to_hass(hass)
     from homeassistant.helpers import entity_registry as er
@@ -82,9 +80,7 @@ async def test_sensors_created(
         assert state is not None, f"Sensor {eid} not found in states"
     for key in ("unsuppressed_list", "suppressed_list"):
         assert (
-            ent_reg.async_get_entity_id(
-                "sensor", DOMAIN, f"{config_entry.entry_id}_{DOMAIN}_{key}"
-            )
+            ent_reg.async_get_entity_id("sensor", DOMAIN, f"{config_entry.entry_id}_{DOMAIN}_{key}")
             is not None
         )
     for key in (
@@ -94,23 +90,14 @@ async def test_sensors_created(
         "suppressed_unavailable_list",
     ):
         assert (
-            ent_reg.async_get_entity_id(
-                "sensor", DOMAIN, f"{config_entry.entry_id}_{DOMAIN}_{key}"
-            )
+            ent_reg.async_get_entity_id("sensor", DOMAIN, f"{config_entry.entry_id}_{DOMAIN}_{key}")
             is None
         )
-    assert (
-        hass.states.get("sensor.sh_entity_status_unsuppressed_unavailable_count")
-        is None
-    )
-    assert (
-        hass.states.get("sensor.sh_entity_status_suppressed_unavailable_count") is None
-    )
+    assert hass.states.get("sensor.sh_entity_status_unsuppressed_unavailable_count") is None
+    assert hass.states.get("sensor.sh_entity_status_suppressed_unavailable_count") is None
 
 
-async def test_sensor_unique_ids(
-    hass: HomeAssistant, config_entry: MockConfigEntry
-) -> None:
+async def test_sensor_unique_ids(hass: HomeAssistant, config_entry: MockConfigEntry) -> None:
     """Test that sensor unique_ids follow the expected pattern."""
     config_entry.add_to_hass(hass)
 
@@ -139,9 +126,7 @@ async def test_sensor_unique_ids(
     for key in sensor_keys:
         expected_uid = f"{config_entry.entry_id}_{DOMAIN}_{key}"
         entry = ent_reg.async_get_entity_id("sensor", DOMAIN, expected_uid)
-        assert entry is not None, (
-            f"Unique ID {expected_uid} not found in entity registry"
-        )
+        assert entry is not None, f"Unique ID {expected_uid} not found in entity registry"
 
 
 async def test_sensor_state_updates_with_coordinator_data(

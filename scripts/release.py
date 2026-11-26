@@ -99,22 +99,14 @@ def check_readiness(root: Path) -> None:
     if hacs.get("name") != expected["name"] or hacs.get("content_in_root") is not False:
         raise ValueError("HACS metadata must match the integration name and layout.")
     if not hacs.get("homeassistant"):
-        raise ValueError(
-            "Set hacs.homeassistant to the minimum Home Assistant version."
-        )
+        raise ValueError("Set hacs.homeassistant to the minimum Home Assistant version.")
     if hacs.get("zip_release") or "filename" in hacs:
         raise ValueError("Use tagged repository files, not custom HACS ZIP releases.")
-    if not any(
-        path.name != "test_release.py" for path in (root / "tests").rglob("test_*.py")
-    ):
+    if not any(path.name != "test_release.py" for path in (root / "tests").rglob("test_*.py")):
         raise ValueError("Integration tests are required.")
     requirements = (root / "requirements_test.txt").read_text(encoding="utf-8")
-    if not re.search(
-        r"^pytest-homeassistant-custom-component==\S+$", requirements, re.MULTILINE
-    ):
-        raise ValueError(
-            "Pin pytest-homeassistant-custom-component in requirements_test.txt."
-        )
+    if not re.search(r"^pytest-homeassistant-custom-component==\S+$", requirements, re.MULTILINE):
+        raise ValueError("Pin pytest-homeassistant-custom-component in requirements_test.txt.")
 
 
 def prepare(
@@ -123,9 +115,7 @@ def prepare(
     check_readiness(root)
     manifest_path = root / MANIFEST
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    version = select_version(
-        release_baseline(manifest["version"], pages), bump, override
-    )
+    version = select_version(release_baseline(manifest["version"], pages), bump, override)
     if prerelease:
         version = select_prerelease(root, version)
     result = subprocess.run(
@@ -199,13 +189,9 @@ def main() -> None:
             values = recover(ROOT, arguments.version)
         else:
             if arguments.releases is None:
-                raise ValueError(
-                    "prepare requires --releases with paginated GitHub release JSON."
-                )
+                raise ValueError("prepare requires --releases with paginated GitHub release JSON.")
             pages = json.loads(arguments.releases.read_text(encoding="utf-8"))
-            values = prepare(
-                ROOT, pages, arguments.bump, arguments.version, arguments.prerelease
-            )
+            values = prepare(ROOT, pages, arguments.bump, arguments.version, arguments.prerelease)
     except (
         KeyError,
         OSError,

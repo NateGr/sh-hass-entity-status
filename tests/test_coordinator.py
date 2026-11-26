@@ -217,9 +217,7 @@ def test_suppressed_device_and_orphan_counts() -> None:
     assert result["unsuppressed_unavailable_count"] == 0
     assert result["suppressed_unavailable_count"] == 2
     assert result["unsuppressed_unavailable_devices"] == []
-    assert result["suppressed_unavailable_devices"] == [
-        suppressed_device_without_entities
-    ]
+    assert result["suppressed_unavailable_devices"] == [suppressed_device_without_entities]
     assert result["unsuppressed_orphaned_unavailable_entities"] == []
     assert result["suppressed_orphaned_unavailable_entities"] == [orphan_entity]
 
@@ -258,10 +256,7 @@ def test_unknown_unavailable_entity_defaults_to_unsuppressed_orphan() -> None:
     assert result["suppressed_unavailable_count"] == 0
     assert result["unsuppressed_unavailable_devices"] == []
     assert result["suppressed_unavailable_devices"] == []
-    assert (
-        result["unsuppressed_orphaned_unavailable_entities"][0]["entity_id"]
-        == "sensor.unknown"
-    )
+    assert result["unsuppressed_orphaned_unavailable_entities"][0]["entity_id"] == "sensor.unknown"
     assert result["suppressed_orphaned_unavailable_entities"] == []
 
 

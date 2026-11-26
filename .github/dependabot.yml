@@ -4,6 +4,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 2
     # Upgrade the Home Assistant test stack together with its Python requirements.
     ignore:
       - dependency-name: "pytest-homeassistant-custom-component"
@@ -12,7 +13,7 @@ updates:
       - dependency-name: "pytest-cov"
       - dependency-name: "pytest-socket"
     groups:
-      test-dependencies:
+      test-tools:
         patterns:
           - "*"
 
@@ -20,7 +21,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 2
     groups:
-      actions-dependencies:
+      actions:
         patterns:
           - "*"

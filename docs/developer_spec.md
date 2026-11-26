@@ -9,8 +9,12 @@ Use this sequence when working from a fork.
 3. Run checks locally before opening a pull request:
 
 ```bash
-ruff check .
-python -m pytest tests/ -v
+python scripts/release.py check
+python -m ruff check .
+python -m ruff format --check --exclude '*.md' .
+python -m mypy custom_components/sh_entity_status/ --ignore-missing-imports
+python -m pytest tests/ --cov=scripts --cov=custom_components/sh_entity_status --cov-report=term-missing
+python -m coverage report --include='*/custom_components/sh_entity_status/*' --fail-under=80
 ```
 
 4. Push your branch and open a pull request.
@@ -19,13 +23,13 @@ python -m pytest tests/ -v
 ## Development Environment Setup
 
 ### Prerequisites
-- Python 3.12+
+- Python 3.14.2 (the version used in CI)
 - A Home Assistant development environment (or just the test dependencies for unit testing)
 
 ### Install test dependencies
 
 ```bash
-pip install -r requirements_test.txt
+python -m pip install -r requirements_test.txt
 ```
 
 ### Run the test suite
@@ -122,14 +126,7 @@ Config flow, sensor, and service tests use the `hass` fixture from `pytest-homea
 
 ## Linting / CI
 
-Current CI includes:
-- `ruff` linting in `.github/workflows/ci.yml`
-- `pytest` execution in `.github/workflows/ci.yml`
-
-Clean CI dependency verification for linting:
-- CI explicitly installs `ruff` (`python -m pip install ruff`)
-- CI verifies availability on a fresh runner (`python -m ruff --version`)
-- Lint then runs with `python -m ruff check .`
-
-Recommended future additions:
-- `mypy` for type checking (HA-style strict config)
+CI and the release workflow use the same validation action for readiness, Ruff
+lint and formatting, mypy, tests, integration-only coverage, hassfest, and public
+HACS validation. See [`release_setup.md`](release_setup.md) for the test stack
+and release safeguards.
