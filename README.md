@@ -7,7 +7,7 @@
   <a href="https://github.com/NateGr/sh-hass-entity-status/releases/latest"><img src="https://img.shields.io/github/v/release/NateGr/sh-hass-entity-status?logo=github" alt="Latest release"></a>
   <a href="https://github.com/NateGr/sh-hass-entity-status/releases"><img src="https://img.shields.io/github/downloads/NateGr/sh-hass-entity-status/total?logo=github&label=downloads" alt="GitHub downloads"></a>
   <a href="https://hacs.xyz/"><img src="https://img.shields.io/badge/HACS-Custom-orange.svg?logo=homeassistantcommunitystore&logoColor=white" alt="HACS Custom"></a>
-  <a href="https://www.home-assistant.io/"><img src="https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-41BDF5?logo=homeassistant&logoColor=white" alt="Home Assistant 2026.3.0+"></a>
+  <a href="https://www.home-assistant.io/"><img src="https://img.shields.io/badge/Home%20Assistant-2026.9.0%2B-41BDF5?logo=homeassistant&logoColor=white" alt="Home Assistant 2026.9.0+"></a>
   <a href="https://github.com/NateGr/sh-hass-entity-status/stargazers"><img src="https://img.shields.io/github/stars/NateGr/sh-hass-entity-status?style=flat&logo=github" alt="GitHub stars"></a>
   <a href="https://github.com/NateGr/sh-hass-entity-status/issues"><img src="https://img.shields.io/github/issues/NateGr/sh-hass-entity-status" alt="Open issues"></a>
   <a href="https://github.com/NateGr/sh-hass-entity-status/commits/main"><img src="https://img.shields.io/github/last-commit/NateGr/sh-hass-entity-status" alt="Last commit"></a>
@@ -345,16 +345,12 @@ If you want to submit a pull request, use this flow:
 1. Fork this repository.
 2. Create a branch from `main` in your fork.
 3. Make your change.
-4. Run local checks:
-
-  ```bash
-  ruff check .
-  python -m pytest tests/ -v
-  ```
+4. Run the local checks against both Home Assistant test environments described
+   in [`docs/developer_spec.md`](docs/developer_spec.md#development-environment-setup).
 
 5. Open a pull request with a short summary of the change.
 
 If your change affects behavior, update tests and user-facing docs in the same pull request.
 Review the repository license before submitting changes. See [`LICENSE`](LICENSE).
 
-For local setup and release workflow details, see [`docs/developer_spec.md`](docs/developer_spec.md).
+For release workflow details, see [`docs/release_setup.md`](docs/release_setup.md).

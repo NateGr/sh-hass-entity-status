@@ -64,9 +64,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         options = {**config_entry.data, **config_entry.options}
 
         poll_interval = int(options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL))
-        self._refresh_interval = int(
-            options.get(CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL)
-        )
+        self._refresh_interval = int(options.get(CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL))
         self._ignore_label: str = options.get(CONF_IGNORE_LABEL, DEFAULT_IGNORE_LABEL)
 
         super().__init__(
@@ -195,9 +193,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # Compose display_name as 'Name (Area)' if area exists, else just 'Name'
             entity_base_name = (
-                entity_entry.name
-                or entity_entry.original_name
-                or entity_entry.entity_id
+                entity_entry.name or entity_entry.original_name or entity_entry.entity_id
             )
             if entity_area_name:
                 display_name = f"{entity_base_name} ({entity_area_name})"
@@ -221,7 +217,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             device_id = entity_entry.device_id
             if device_id not in devices:
-                dev = device_reg.devices.get(device_id)
+                dev = device_reg.async_get(device_id)
                 if dev is None:
                     orphan_entities.append(entity_dict)
                     continue
@@ -229,9 +225,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 dev_labels = list(dev.labels or [])
                 dev_label_set = set(dev_labels)
                 # Include every known label with explicit true/false assignment state.
-                dev_label_map = {
-                    label_id: label_id in dev_label_set for label_id in all_label_ids
-                }
+                dev_label_map = {label_id: label_id in dev_label_set for label_id in all_label_ids}
                 dev_area_id = dev.area_id
                 dev_area_name = ""
                 if dev_area_id and dev_area_id in area_reg.areas:
@@ -296,9 +290,9 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Compute total registry counts (independent of unavailability)
         total_devices = len(self._devices)
-        total_entities = sum(
-            len(d.get("entities", [])) for d in self._devices.values()
-        ) + len(self._orphan_entities)
+        total_entities = sum(len(d.get("entities", [])) for d in self._devices.values()) + len(
+            self._orphan_entities
+        )
 
         # Update downtime tracking
         now = datetime.now(UTC)
@@ -396,9 +390,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "unsuppressed_orphaned_unavailable_entities": (
                 unsuppressed_orphaned_unavailable_entities
             ),
-            "suppressed_orphaned_unavailable_entities": (
-                suppressed_orphaned_unavailable_entities
-            ),
+            "suppressed_orphaned_unavailable_entities": (suppressed_orphaned_unavailable_entities),
             **_base,
         }
 

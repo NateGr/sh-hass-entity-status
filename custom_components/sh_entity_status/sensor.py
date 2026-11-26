@@ -68,10 +68,7 @@ async def async_setup_entry(
     """Set up SmartHass Entity Status sensors from a config entry."""
     coordinator: SHEntityStatusCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        [
-            SHEntityStatusSensor(coordinator, entry, desc)
-            for desc in _SENSOR_DESCRIPTIONS
-        ]
+        [SHEntityStatusSensor(coordinator, entry, desc) for desc in _SENSOR_DESCRIPTIONS]
     )
 
 
@@ -102,9 +99,7 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
         # Explicitly stamp the entity_id so all sensors share the ENTITY_ID_PREFIX
         # namespace regardless of what friendly name is set above.
         self.entity_id = (
-            f"sensor.{ENTITY_ID_PREFIX}_{self._key}"
-            if ENTITY_ID_PREFIX
-            else f"sensor.{self._key}"
+            f"sensor.{ENTITY_ID_PREFIX}_{self._key}" if ENTITY_ID_PREFIX else f"sensor.{self._key}"
         )
 
     @property
@@ -140,17 +135,13 @@ class SHEntityStatusSensor(CoordinatorEntity[SHEntityStatusCoordinator], SensorE
                 "devices": data.get("unsuppressed_unavailable_devices", []),
                 "entities": data.get("unsuppressed_orphaned_unavailable_entities", []),
                 "devices_count": len(data.get("unsuppressed_unavailable_devices", [])),
-                "entities_count": len(
-                    data.get("unsuppressed_orphaned_unavailable_entities", [])
-                ),
+                "entities_count": len(data.get("unsuppressed_orphaned_unavailable_entities", [])),
             }
         if self._key == "suppressed_list":
             return {
                 "devices": data.get("suppressed_unavailable_devices", []),
                 "entities": data.get("suppressed_orphaned_unavailable_entities", []),
                 "devices_count": len(data.get("suppressed_unavailable_devices", [])),
-                "entities_count": len(
-                    data.get("suppressed_orphaned_unavailable_entities", [])
-                ),
+                "entities_count": len(data.get("suppressed_orphaned_unavailable_entities", [])),
             }
         return None

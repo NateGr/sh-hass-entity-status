@@ -26,9 +26,7 @@ def test_stable_version(version):
     assert parse_version(version) == tuple(int(part) for part in version.split("."))
 
 
-@pytest.mark.parametrize(
-    "version", ["v1.0.0", "1.0", "01.0.0", "1.0.0b1", "1.0.0\n", ""]
-)
+@pytest.mark.parametrize("version", ["v1.0.0", "1.0", "01.0.0", "1.0.0b1", "1.0.0\n", ""])
 def test_invalid_version(version):
     with pytest.raises(ValueError):
         parse_version(version)
@@ -100,13 +98,13 @@ def git_repository(tmp_path):
             {
                 "name": "SmartHass Entity Status",
                 "content_in_root": False,
-                "homeassistant": "2026.3.0",
+                "homeassistant": "2026.9.0",
             }
         ),
         encoding="utf-8",
     )
     (tmp_path / "requirements_test.txt").write_text(
-        "pytest-homeassistant-custom-component==0.13.316\n", encoding="utf-8"
+        "pytest-homeassistant-custom-component==0.13.363\n", encoding="utf-8"
     )
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "test_integration.py").write_text("", encoding="utf-8")
@@ -183,14 +181,18 @@ def test_readiness_requires_pinned_test_dependency(git_repository):
         check_readiness(git_repository)
 
 
+def test_readiness_rejects_tooling_tests_without_integration_tests(git_repository):
+    (git_repository / "tests" / "test_integration.py").unlink()
+    (git_repository / "tests" / "test_ha_compatibility.py").write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="Integration tests"):
+        check_readiness(git_repository)
+
+
 def test_prepare_rejects_unready_repository(git_repository):
     (git_repository / "hacs.json").unlink()
     with pytest.raises(OSError):
         prepare(git_repository, [], "patch", "")
-    assert (
-        json.loads((git_repository / MANIFEST).read_text(encoding="utf-8"))["version"]
-        == "0.2.0"
-    )
+    assert json.loads((git_repository / MANIFEST).read_text(encoding="utf-8"))["version"] == "0.2.0"
 
 
 def test_check_cli_reports_readiness(git_repository, monkeypatch, capsys):
@@ -218,15 +220,11 @@ def test_prepare_prerelease_numbers_existing_tags(git_repository):
     run_git(git_repository, "tag", "v0.2.1rc1")
     run_git(git_repository, "tag", "v0.2.1rc3")
     run_git(git_repository, "tag", "v0.2.1rc-invalid")
-    assert prepare(git_repository, [], "patch", "", prerelease=True) == {
-        "version": "0.2.1rc4"
-    }
+    assert prepare(git_repository, [], "patch", "", prerelease=True) == {"version": "0.2.1rc4"}
     manifest = json.loads((git_repository / MANIFEST).read_text(encoding="utf-8"))
     assert manifest["version"] == "0.2.1rc4"
     assert (
-        run_git(git_repository, "show", "HEAD:" + MANIFEST.as_posix()).find(
-            '"version": "0.2.0"'
-        )
+        run_git(git_repository, "show", "HEAD:" + MANIFEST.as_posix()).find('"version": "0.2.0"')
         >= 0
     )
 
@@ -234,9 +232,7 @@ def test_prepare_prerelease_numbers_existing_tags(git_repository):
 def test_prerelease_target_must_exceed_stable_baseline(git_repository):
     with pytest.raises(ValueError, match="greater"):
         prepare(git_repository, [], "patch", "0.2.0", prerelease=True)
-    assert prepare(git_repository, [], "minor", "", prerelease=True) == {
-        "version": "0.3.0rc1"
-    }
+    assert prepare(git_repository, [], "minor", "", prerelease=True) == {"version": "0.3.0rc1"}
 
 
 def test_stable_release_can_follow_prerelease(git_repository):
@@ -277,9 +273,7 @@ def test_invalid_prerelease_versions(version):
 def released_repository(git_repository):
     prepare(git_repository, [], "patch", "")
     run_git(git_repository, "add", MANIFEST.as_posix())
-    run_git(
-        git_repository, "commit", "-m", "Release v0.2.1\n\nSmartHass-Release: 0.2.1"
-    )
+    run_git(git_repository, "commit", "-m", "Release v0.2.1\n\nSmartHass-Release: 0.2.1")
     run_git(git_repository, "tag", "-a", "v0.2.1", "-m", "Release v0.2.1")
     run_git(git_repository, "update-ref", "refs/remotes/origin/main", "HEAD")
     return git_repository

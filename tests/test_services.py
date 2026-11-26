@@ -33,9 +33,7 @@ def config_entry() -> MockConfigEntry:
     return MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, entry_id="svc_entry_id")
 
 
-async def test_refresh_registry_service(
-    hass: HomeAssistant, config_entry: MockConfigEntry
-) -> None:
+async def test_refresh_registry_service(hass: HomeAssistant, config_entry: MockConfigEntry) -> None:
     """Test that refresh_registry service triggers coordinator.async_refresh_registry."""
     config_entry.add_to_hass(hass)
 
@@ -67,9 +65,7 @@ async def test_refresh_registry_service(
     coordinator.async_refresh_registry.assert_called_once()
 
 
-async def test_poll_unavailable_service(
-    hass: HomeAssistant, config_entry: MockConfigEntry
-) -> None:
+async def test_poll_unavailable_service(hass: HomeAssistant, config_entry: MockConfigEntry) -> None:
     """Test that poll_unavailable service triggers coordinator.async_request_refresh."""
     config_entry.add_to_hass(hass)
 
@@ -101,9 +97,7 @@ async def test_poll_unavailable_service(
     coordinator.async_request_refresh.assert_called_once()
 
 
-async def test_get_registry_service(
-    hass: HomeAssistant, config_entry: MockConfigEntry
-) -> None:
+async def test_get_registry_service(hass: HomeAssistant, config_entry: MockConfigEntry) -> None:
     """The action returns the mapped registry, not just unavailable sensor data."""
     config_entry.add_to_hass(hass)
     area = ar.async_get(hass).async_create("Kitchen")
@@ -119,9 +113,7 @@ async def test_get_registry_service(
     linked = entity_reg.async_get_or_create(
         "sensor", "test", "linked", device_id=device.id, original_name="Linked"
     )
-    entity_reg.async_update_entity(
-        linked.entity_id, area_id=area.id, labels={label.label_id}
-    )
+    entity_reg.async_update_entity(linked.entity_id, area_id=area.id, labels={label.label_id})
     disabled = entity_reg.async_get_or_create(
         "sensor",
         "test",
@@ -141,9 +133,7 @@ async def test_get_registry_service(
     await async_setup_services(hass)
     states_before = hass.states.async_all()
 
-    assert (
-        hass.services.supports_response(DOMAIN, "get_registry") is SupportsResponse.ONLY
-    )
+    assert hass.services.supports_response(DOMAIN, "get_registry") is SupportsResponse.ONLY
     response = await hass.services.async_call(
         DOMAIN, "get_registry", {}, blocking=True, return_response=True
     )
@@ -165,9 +155,7 @@ async def test_get_registry_service(
         disabled.entity_id,
     }
     exported_linked = next(
-        entity
-        for entity in exported_device["entities"]
-        if entity["entity_id"] == linked.entity_id
+        entity for entity in exported_device["entities"] if entity["entity_id"] == linked.entity_id
     )
     assert exported_linked["name"] == "Linked"
     assert exported_linked["display_name"] == "Linked (Kitchen)"
@@ -196,9 +184,7 @@ async def test_get_registry_multiple_entries(hass: HomeAssistant) -> None:
 
     assert set(response["entries"]) == {"first", "second"}
     assert all(snapshot["devices"] == [] for snapshot in response["entries"].values())
-    assert all(
-        snapshot["orphan_entities"] == [] for snapshot in response["entries"].values()
-    )
+    assert all(snapshot["orphan_entities"] == [] for snapshot in response["entries"].values())
 
 
 async def test_get_registry_requires_response(hass: HomeAssistant) -> None:
@@ -233,9 +219,7 @@ async def test_get_registry_rest_api(
     hass: HomeAssistant, hass_client, config_entry: MockConfigEntry
 ) -> None:
     """Node-RED can fetch the JSON document through the native service REST API."""
-    hass.data[DOMAIN] = {
-        config_entry.entry_id: SHEntityStatusCoordinator(hass, config_entry)
-    }
+    hass.data[DOMAIN] = {config_entry.entry_id: SHEntityStatusCoordinator(hass, config_entry)}
     await async_setup_services(hass)
     assert await async_setup_component(hass, "api", {})
     client = await hass_client()

@@ -28,9 +28,7 @@ def _migrate_entity_registry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
         new_unique_id = f"{entry.entry_id}_{DOMAIN}_{new_key}"
         new_entity_id = (
-            f"sensor.{ENTITY_ID_PREFIX}_{new_key}"
-            if ENTITY_ID_PREFIX
-            else f"sensor.{new_key}"
+            f"sensor.{ENTITY_ID_PREFIX}_{new_key}" if ENTITY_ID_PREFIX else f"sensor.{new_key}"
         )
         entity_registry.async_update_entity(
             entity_id,
