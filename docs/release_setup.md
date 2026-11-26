@@ -23,6 +23,8 @@ To test a change before merging, run **Actions → Release → Run workflow**, s
 
 The readiness check verifies integration files, metadata, the minimum Home Assistant version in `hacs.json`, a pinned Home Assistant test plugin, and integration tests. Run `python scripts/release.py check` locally. Test with the pinned test dependencies; this plugin pin alone does not establish that the declared minimum Home Assistant version was tested. Private repositories may run dry runs, but production releases require public visibility and HACS validation.
 
+Dependabot updates Ruff and mypy, but excludes the pinned Home Assistant test stack from version updates. `pytest-homeassistant-custom-component` pins Home Assistant and its pytest dependencies, so upgrade the plugin, pytest, pytest-asyncio, pytest-cov, and pytest-socket together and check the required Python version in the shared validation action. Changing `hacs.json` is not required just because test dependencies change. The current plugin (`0.13.316`) installs Home Assistant `2026.2.3`, not the declared minimum `2026.3.0`; testing the minimum and latest stable releases requires separate compatible test environments.
+
 Replaces: `publish.yml`, `tag_release_pr_merge.yml`, `hacs.yml` (folded into the validate action), and `release.sh`. No more release PRs or ZIP asset; HACS installs from the tag (`hacs.json` has no `zip_release`).
 
 ## GitHub setup and protections
