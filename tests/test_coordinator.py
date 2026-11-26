@@ -1,7 +1,7 @@
 """Tests for the SH Entity Status coordinator unavailable model."""
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 from custom_components.sh_entity_status.coordinator import (
@@ -92,7 +92,7 @@ def test_registry_snapshot_complete_and_independent() -> None:
         devices=devices,
         orphans=orphans,
     )
-    coord._last_registry_refresh = datetime(2026, 3, 1, tzinfo=timezone.utc)
+    coord._last_registry_refresh = datetime(2026, 3, 1, tzinfo=UTC)
 
     result = coord.async_get_registry()
 

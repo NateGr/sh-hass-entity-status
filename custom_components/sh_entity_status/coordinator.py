@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from copy import deepcopy
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.const import STATE_UNAVAILABLE
@@ -259,7 +259,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._devices = devices
         self._orphan_entities = orphan_entities
-        self._last_registry_refresh = datetime.now(timezone.utc)
+        self._last_registry_refresh = datetime.now(UTC)
         _LOGGER.debug(
             "Registry refreshed: %d devices, %d orphan entities",
             len(devices),
@@ -276,7 +276,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Poll for unavailable entities and compute integration metrics."""
         try:
             result = self._compute_unavailable()
-            self._last_status_poll = datetime.now(timezone.utc)
+            self._last_status_poll = datetime.now(UTC)
             result["last_registry_refresh"] = self._last_registry_refresh
             result["last_status_poll"] = self._last_status_poll
             return result
@@ -301,7 +301,7 @@ class SHEntityStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ) + len(self._orphan_entities)
 
         # Update downtime tracking
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # Start tracking newly unavailable entities
         for eid in unavailable_ids:
             if eid not in self._downtime_start:

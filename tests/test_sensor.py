@@ -1,6 +1,6 @@
 """Tests for SH Entity Status sensor platform."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +15,7 @@ ENTRY_DATA = {
     "poll_interval": 30,
 }
 
-_NOW = datetime(2026, 4, 13, 10, 0, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 4, 13, 10, 0, 0, tzinfo=UTC)
 
 _COORDINATOR_DATA = {
     "unsuppressed_unavailable_count": 0,

@@ -4,6 +4,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Upgrade the Home Assistant test stack together with its Python requirements.
+    ignore:
+      - dependency-name: "pytest-homeassistant-custom-component"
+      - dependency-name: "pytest"
+      - dependency-name: "pytest-asyncio"
+      - dependency-name: "pytest-cov"
+      - dependency-name: "pytest-socket"
     groups:
       test-dependencies:
         patterns:
