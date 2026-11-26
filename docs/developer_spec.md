@@ -6,19 +6,21 @@ Use this sequence when working from a fork.
 
 1. Fork the repository and clone your fork.
 2. Create a branch from `main` for your change.
-3. Run checks locally before opening a pull request:
+3. Set up the minimum environment below, activate it, and run checks locally:
 
 ```bash
 python scripts/release.py check
 python -m ruff check .
 python -m ruff format --check --exclude '*.md' .
 python -m mypy custom_components/sh_entity_status/ --ignore-missing-imports
+python scripts/check_ha_compatibility.py minimum
 python -m pytest tests/ --cov=scripts --cov=custom_components/sh_entity_status --cov-report=term-missing
 python -m coverage report --include='*/custom_components/sh_entity_status/*' --fail-under=80
 ```
 
-4. Push your branch and open a pull request.
-5. Releases are cut by maintainers from the **Release** workflow (see [`release_setup.md`](release_setup.md)).
+4. Run the tests in the separate latest fixture-supported environment below.
+5. Push your branch and open a pull request.
+6. Releases are cut by maintainers from the **Release** workflow (see [`release_setup.md`](release_setup.md)).
 
 ## Development Environment Setup
 
@@ -26,19 +28,39 @@ python -m coverage report --include='*/custom_components/sh_entity_status/*' --f
 - Python 3.14.2 (the version used in CI)
 - A Home Assistant development environment (or just the test dependencies for unit testing)
 
-### Install test dependencies
+### Minimum Home Assistant environment
+
+Create and activate an isolated environment for the minimum supported Home
+Assistant version. The pinned fixture plugin installs Home Assistant and its
+compatible test dependencies:
 
 ```bash
+python3.14 -m venv .venv/minimum
+source .venv/minimum/bin/activate
 python -m pip install -r requirements_test.txt
 ```
 
-### Run the test suite
+### Latest fixture-supported Home Assistant environment
+
+Use a separate environment: the fixture plugins pin incompatible versions of
+Home Assistant and their test dependencies. Do not install both requirements
+files into the same environment.
 
 ```bash
-python -m pytest tests/ -v
+python3.14 -m venv .venv/latest
+.venv/latest/bin/python -m pip install -r requirements/latest/requirements.txt
+.venv/latest/bin/python scripts/check_ha_compatibility.py latest
+.venv/latest/bin/python -m pytest tests/ --cov=scripts --cov=custom_components/sh_entity_status --cov-report=term-missing
+.venv/latest/bin/python -m coverage report --include='*/custom_components/sh_entity_status/*' --fail-under=80
 ```
 
-All tests should pass. The suite covers:
+These commands use POSIX paths; on Windows, use each environment's
+`Scripts\python.exe` and its activation script. CI runs both environments.
+The latest fixture-supported version may lag the newest Home Assistant release;
+see [`release_setup.md`](release_setup.md#home-assistant-compatibility) for
+update monitoring.
+
+All tests should pass in both environments. The suite covers:
 - Config flow (success path, invalid interval validation)
 - Coordinator logic (device + orphaned entity categorization)
 - Sensor creation, unique IDs, and state updates

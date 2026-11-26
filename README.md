@@ -345,16 +345,12 @@ If you want to submit a pull request, use this flow:
 1. Fork this repository.
 2. Create a branch from `main` in your fork.
 3. Make your change.
-4. Run local checks:
-
-  ```bash
-  ruff check .
-  python -m pytest tests/ -v
-  ```
+4. Run the local checks against both Home Assistant test environments described
+   in [`docs/developer_spec.md`](docs/developer_spec.md#development-environment-setup).
 
 5. Open a pull request with a short summary of the change.
 
 If your change affects behavior, update tests and user-facing docs in the same pull request.
 Review the repository license before submitting changes. See [`LICENSE`](LICENSE).
 
-For local setup and release workflow details, see [`docs/developer_spec.md`](docs/developer_spec.md).
+For release workflow details, see [`docs/release_setup.md`](docs/release_setup.md).
