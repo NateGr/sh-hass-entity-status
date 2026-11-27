@@ -1,13 +1,12 @@
-"""Exercise release versioning and recovery checks without Home Assistant."""
+"""Exercise release versioning and fail-closed import checks without Home Assistant."""
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from scripts import release
+from scripts import release as release_module
 from scripts.release import (
     MANIFEST,
     check_readiness,
@@ -21,12 +20,14 @@ from scripts.release import (
 )
 
 
-@pytest.mark.parametrize("version", ["0.0.0", "1.0.11", "12.34.56"])
+@pytest.mark.parametrize("version", ["0.0.0", "0.2.0", "12.34.56"])
 def test_stable_version(version):
     assert parse_version(version) == tuple(int(part) for part in version.split("."))
 
 
-@pytest.mark.parametrize("version", ["v1.0.0", "1.0", "01.0.0", "1.0.0b1", "1.0.0\n", ""])
+@pytest.mark.parametrize(
+    "version", ["v1.0.0", "1.0", "01.0.0", "1.0.0b1", "1.0.0\n", "1.0.0;echo bad", ""]
+)
 def test_invalid_version(version):
     with pytest.raises(ValueError):
         parse_version(version)
@@ -54,7 +55,7 @@ def test_unknown_bump():
         select_version("0.2.0", "automatic")
 
 
-def test_release_baseline_ignores_unpublished_versions():
+def test_release_baseline_uses_all_pages_and_ignores_unpublished_versions():
     pages = [
         [{"tag_name": "v0.3.0", "draft": False, "prerelease": False}],
         [
@@ -69,31 +70,53 @@ def test_release_baseline_ignores_unpublished_versions():
     assert release_baseline("0.2.0", []) == "0.2.0"
 
 
-def run_git(root: Path, *arguments: str) -> str:
-    return subprocess.check_output(["git", *arguments], cwd=root, text=True).strip()
+def write_file(root: Path, relative: str, content: str):
+    path = root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
 
 
 @pytest.fixture
-def git_repository(tmp_path):
-    path = tmp_path / MANIFEST
-    path.parent.mkdir(parents=True)
-    path.write_text(
-        json.dumps(
-            {
-                "domain": "sh_entity_status",
-                "name": "SmartHass Entity Status",
-                "documentation": "https://github.com/NateGr/sh-hass-entity-status",
-                "issue_tracker": "https://github.com/NateGr/sh-hass-entity-status/issues",
-                "codeowners": ["@NateGr"],
-                "version": "0.2.0",
-            }
-        ),
-        encoding="utf-8",
+def repository(tmp_path):
+    write_file(tmp_path, "pyproject.toml", "[tool.smarthass]\nintegration-ready = false\n")
+    return tmp_path
+
+
+def test_scaffold_is_not_integration_ready(repository):
+    assert check_readiness(repository) is False
+    with pytest.raises(ValueError, match="not enabled"):
+        check_readiness(repository, require_integration=True)
+
+
+def test_partial_import_does_not_silently_skip_validation(repository):
+    write_file(repository, MANIFEST.as_posix(), "{}")
+    with pytest.raises(ValueError, match="not enabled"):
+        check_readiness(repository)
+
+
+@pytest.fixture
+def imported_repository(repository):
+    write_file(repository, "pyproject.toml", "[tool.smarthass]\nintegration-ready = true\n")
+    manifest = {
+        "domain": "sh_entity_status",
+        "name": "SmartHass Entity Status",
+        "documentation": "https://github.com/NateGr/sh-hass-entity-status",
+        "issue_tracker": "https://github.com/NateGr/sh-hass-entity-status/issues",
+        "codeowners": ["@NateGr"],
+        "version": "0.2.0",
+    }
+    write_file(repository, MANIFEST.as_posix(), json.dumps(manifest))
+    write_file(repository, "custom_components/sh_entity_status/__init__.py", "")
+    write_file(repository, "custom_components/sh_entity_status/brand/icon.png", "test fixture")
+    write_file(repository, "tests/test_config_flow.py", "")
+    write_file(
+        repository,
+        "requirements_test.txt",
+        "homeassistant==2026.9.0\n",
     )
-    (path.parent / "__init__.py").write_text("", encoding="utf-8")
-    (path.parent / "brand").mkdir()
-    (path.parent / "brand" / "icon.png").write_bytes(b"fixture")
-    (tmp_path / "hacs.json").write_text(
+    write_file(
+        repository,
+        "hacs.json",
         json.dumps(
             {
                 "name": "SmartHass Entity Status",
@@ -101,105 +124,106 @@ def git_repository(tmp_path):
                 "homeassistant": "2026.9.0",
             }
         ),
-        encoding="utf-8",
     )
-    (tmp_path / "requirements_test.txt").write_text(
-        "pytest-homeassistant-custom-component==0.13.363\n", encoding="utf-8"
-    )
-    (tmp_path / "tests").mkdir()
-    (tmp_path / "tests" / "test_integration.py").write_text("", encoding="utf-8")
-    run_git(tmp_path, "init", "--initial-branch=main")
-    run_git(tmp_path, "config", "user.name", "Release tests")
-    run_git(tmp_path, "config", "user.email", "release-tests@example.invalid")
-    run_git(tmp_path, "config", "commit.gpgsign", "false")
-    run_git(tmp_path, "add", ".")
-    run_git(tmp_path, "commit", "-m", "Initial")
-    return tmp_path
+    return repository
 
 
-@pytest.mark.parametrize("version", ["0.2.0", "0.2.1rc1"])
-def test_readiness_accepts_valid_versions(git_repository, version):
-    path = git_repository / MANIFEST
-    manifest = json.loads(path.read_text(encoding="utf-8"))
+def test_import_readiness(imported_repository):
+    assert check_readiness(imported_repository, require_integration=True)
+
+
+@pytest.mark.parametrize("version", ["0.2.1rc1", "0.2.1rc2", "1.1.0b1"])
+def test_readiness_accepts_prerelease_candidate(imported_repository, version):
+    manifest_path = imported_repository / MANIFEST
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["version"] = version
-    path.write_text(json.dumps(manifest), encoding="utf-8")
-    check_readiness(git_repository)
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    assert check_readiness(imported_repository, require_integration=True)
+
+
+@pytest.mark.parametrize("version", ["0.2.1rc0", "0.2.1rc01", "0.2.1-rc.1", "1.1.0b0", "1.1.0b01"])
+def test_readiness_rejects_invalid_prerelease(imported_repository, version):
+    manifest_path = imported_repository / MANIFEST
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["version"] = version
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError):
+        check_readiness(imported_repository, require_integration=True)
 
 
 @pytest.mark.parametrize(
-    "field",
-    ["domain", "name", "documentation", "issue_tracker", "codeowners", "version"],
+    "relative",
+    [
+        "custom_components/sh_entity_status/__init__.py",
+        "custom_components/sh_entity_status/brand/icon.png",
+        "tests/test_config_flow.py",
+    ],
 )
-def test_readiness_rejects_invalid_manifest(git_repository, field):
-    path = git_repository / MANIFEST
-    manifest = json.loads(path.read_text(encoding="utf-8"))
-    manifest[field] = "invalid"
-    path.write_text(json.dumps(manifest), encoding="utf-8")
+def test_missing_import_assets(imported_repository, relative):
+    (imported_repository / relative).unlink()
     with pytest.raises(ValueError):
-        check_readiness(git_repository)
+        check_readiness(imported_repository)
+
+
+@pytest.mark.parametrize(
+    "field", ["domain", "name", "documentation", "issue_tracker", "codeowners"]
+)
+def test_wrong_manifest_metadata(imported_repository, field):
+    manifest_path = imported_repository / MANIFEST
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest[field] = "wrong"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError):
+        check_readiness(imported_repository)
 
 
 @pytest.mark.parametrize(
     "changes",
     [
+        {"homeassistant": ""},
+        {"homeassistant": "2026.3.0"},
+        {"zip_release": True},
+        {"filename": "entity_status.zip"},
         {"name": "wrong"},
         {"content_in_root": True},
-        {"homeassistant": ""},
-        {"zip_release": True},
-        {"filename": "integration.zip"},
     ],
 )
-def test_readiness_rejects_invalid_hacs_metadata(git_repository, changes):
-    path = git_repository / "hacs.json"
-    metadata = json.loads(path.read_text(encoding="utf-8"))
-    metadata.update(changes)
-    path.write_text(json.dumps(metadata), encoding="utf-8")
+def test_wrong_hacs_metadata(imported_repository, changes):
+    path = imported_repository / "hacs.json"
+    hacs = json.loads(path.read_text(encoding="utf-8"))
+    hacs.update(changes)
+    path.write_text(json.dumps(hacs), encoding="utf-8")
     with pytest.raises(ValueError):
-        check_readiness(git_repository)
+        check_readiness(imported_repository)
 
 
-@pytest.mark.parametrize(
-    "path",
-    [
-        "custom_components/sh_entity_status/__init__.py",
-        "custom_components/sh_entity_status/brand/icon.png",
-        "tests/test_integration.py",
-        "requirements_test.txt",
-    ],
-)
-def test_readiness_rejects_missing_assets(git_repository, path):
-    (git_repository / path).unlink()
-    with pytest.raises((ValueError, OSError)):
-        check_readiness(git_repository)
+def test_missing_homeassistant_test_dependency(imported_repository):
+    write_file(imported_repository, "requirements_test.txt", "pytest==9.1.1\n")
+    with pytest.raises(ValueError, match="Pin Home Assistant"):
+        check_readiness(imported_repository)
 
 
-def test_readiness_requires_pinned_test_dependency(git_repository):
-    (git_repository / "requirements_test.txt").write_text(
-        "pytest-homeassistant-custom-component\n", encoding="utf-8"
-    )
-    with pytest.raises(ValueError, match="Pin pytest"):
-        check_readiness(git_repository)
+def test_readiness_requires_boolean(repository):
+    write_file(repository, "pyproject.toml", '[tool.smarthass]\nintegration-ready = "yes"\n')
+    with pytest.raises(ValueError, match="boolean"):
+        check_readiness(repository)
 
 
-def test_readiness_rejects_tooling_tests_without_integration_tests(git_repository):
-    (git_repository / "tests" / "test_integration.py").unlink()
-    (git_repository / "tests" / "test_ha_compatibility.py").write_text("", encoding="utf-8")
-    with pytest.raises(ValueError, match="Integration tests"):
-        check_readiness(git_repository)
+def run_git(root, *arguments):
+    return subprocess.check_output(
+        ["git", "-c", "safe.bareRepository=all", *arguments], cwd=root, text=True
+    ).strip()
 
 
-def test_prepare_rejects_unready_repository(git_repository):
-    (git_repository / "hacs.json").unlink()
-    with pytest.raises(OSError):
-        prepare(git_repository, [], "patch", "")
-    assert json.loads((git_repository / MANIFEST).read_text(encoding="utf-8"))["version"] == "0.2.0"
-
-
-def test_check_cli_reports_readiness(git_repository, monkeypatch, capsys):
-    monkeypatch.setattr(release, "ROOT", git_repository)
-    monkeypatch.setattr(sys, "argv", ["release.py", "check"])
-    release.main()
-    assert "Integration readiness checks passed" in capsys.readouterr().out
+@pytest.fixture
+def git_repository(imported_repository):
+    run_git(imported_repository, "init", "--initial-branch=main")
+    run_git(imported_repository, "config", "user.name", "Release tests")
+    run_git(imported_repository, "config", "user.email", "release-tests@example.invalid")
+    run_git(imported_repository, "config", "commit.gpgsign", "false")
+    run_git(imported_repository, "add", ".")
+    run_git(imported_repository, "commit", "-m", "Imported integration")
+    return imported_repository
 
 
 def test_prepare_updates_only_version(git_repository):
@@ -217,54 +241,28 @@ def test_prepare_rejects_existing_tag(git_repository):
 
 
 def test_prepare_prerelease_numbers_existing_tags(git_repository):
-    run_git(git_repository, "tag", "v0.2.1rc1")
-    run_git(git_repository, "tag", "v0.2.1rc3")
-    run_git(git_repository, "tag", "v0.2.1rc-invalid")
+    for tag in ("v0.2.1rc1", "v0.2.1rc3", "v0.2.1rc01", "v0.2.2rc9"):
+        run_git(git_repository, "tag", tag)
+    previous = json.loads((git_repository / MANIFEST).read_text(encoding="utf-8"))
     assert prepare(git_repository, [], "patch", "", prerelease=True) == {"version": "0.2.1rc4"}
-    manifest = json.loads((git_repository / MANIFEST).read_text(encoding="utf-8"))
-    assert manifest["version"] == "0.2.1rc4"
-    assert (
-        run_git(git_repository, "show", "HEAD:" + MANIFEST.as_posix()).find('"version": "0.2.0"')
-        >= 0
-    )
+    candidate = json.loads((git_repository / MANIFEST).read_text(encoding="utf-8"))
+    verify_release_metadata(previous, candidate, "0.2.1rc4")
+    assert check_readiness(git_repository, require_integration=True)
+    assert run_git(git_repository, "diff", "--name-only") == MANIFEST.as_posix()
 
 
 def test_prerelease_target_must_exceed_stable_baseline(git_repository):
     with pytest.raises(ValueError, match="greater"):
         prepare(git_repository, [], "patch", "0.2.0", prerelease=True)
-    assert prepare(git_repository, [], "minor", "", prerelease=True) == {"version": "0.3.0rc1"}
 
 
 def test_stable_release_can_follow_prerelease(git_repository):
     run_git(git_repository, "tag", "v0.2.1rc1")
-    pages = [[{"tag_name": "v0.2.1rc1", "draft": False, "prerelease": True}]]
-    assert prepare(git_repository, pages, "patch", "") == {"version": "0.2.1"}
+    assert prepare(git_repository, [], "patch", "") == {"version": "0.2.1"}
 
 
-def test_prepare_cli_outputs_prerelease(git_repository, tmp_path, monkeypatch, capsys):
-    releases = tmp_path / "releases.json"
-    releases.write_text("[]", encoding="utf-8")
-    output = tmp_path / "output"
-    monkeypatch.setattr(release, "ROOT", git_repository)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["release.py", "prepare", "--releases", str(releases), "--prerelease"],
-    )
-    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
-    release.main()
-    assert json.loads(capsys.readouterr().out) == {
-        "version": "0.2.1rc1",
-        "prerelease": "true",
-    }
-    assert output.read_text(encoding="utf-8").splitlines() == [
-        "version=0.2.1rc1",
-        "prerelease=true",
-    ]
-
-
-@pytest.mark.parametrize("version", ["0.2.1rc0", "0.2.1rc01", "0.2.1-rc.1"])
-def test_invalid_prerelease_versions(version):
+@pytest.mark.parametrize("version", ["0.2.1rc0", "0.2.1rc01", "0.2.1-rc.1", "v0.2.1rc1"])
+def test_invalid_release_versions(version):
     with pytest.raises(ValueError):
         parse_release_version(version)
 
@@ -279,12 +277,17 @@ def released_repository(git_repository):
     return git_repository
 
 
-def test_recovery_finds_release_commit(released_repository):
+def test_recovery_uses_immutable_release_commit(released_repository):
     expected = run_git(released_repository, "rev-parse", "HEAD")
-    assert recover(released_repository, "0.2.1") == {
-        "version": "0.2.1",
-        "candidate": expected,
-    }
+    assert recover(released_repository, "0.2.1") == {"version": "0.2.1", "candidate": expected}
+    assert recover(released_repository, "0.2.1")["candidate"] == expected
+
+
+def test_recovery_rejects_unrecognized_commit(git_repository):
+    run_git(git_repository, "tag", "-a", "v0.2.0", "-m", "Old release")
+    run_git(git_repository, "update-ref", "refs/remotes/origin/main", "HEAD")
+    with pytest.raises(ValueError):
+        recover(git_repository, "0.2.0")
 
 
 def test_recovery_rejects_lightweight_tag(released_repository):
@@ -300,27 +303,37 @@ def test_recovery_rejects_commit_outside_main(released_repository):
         recover(released_repository, "0.2.1")
 
 
-def test_recovery_of_tag_only_prerelease(git_repository):
+def test_recovery_of_tag_only_prerelease(git_repository, remote_repository):
+    run_git(git_repository, "commit", "--allow-empty", "-m", "New main commit")
+    run_git(git_repository, "push", "origin", "main")
+    base = run_git(git_repository, "rev-parse", "HEAD")
+    prepare(git_repository, [], "patch", "", prerelease=True)
+    run_git(git_repository, "add", MANIFEST.as_posix())
+    run_git(git_repository, "commit", "-m", "Release v0.2.1rc1\n\nSmartHass-Release: 0.2.1rc1")
+    run_git(git_repository, "tag", "-a", "v0.2.1rc1", "-m", "Release v0.2.1rc1")
+    candidate = run_git(git_repository, "rev-parse", "HEAD")
+    run_git(git_repository, "push", "origin", "refs/tags/v0.2.1rc1")
+    assert run_git(remote_repository, "rev-parse", "refs/heads/main") == base
+    assert run_git(remote_repository, "rev-parse", "refs/tags/v0.2.1rc1^{commit}") == candidate
+    assert recover(git_repository, "0.2.1rc1") == {"version": "0.2.1rc1", "candidate": candidate}
+    run_git(git_repository, "update-ref", "refs/remotes/origin/main", base + "^")
+    with pytest.raises(subprocess.CalledProcessError):
+        recover(git_repository, "0.2.1rc1")
+
+
+def test_cli_recovers_prerelease(git_repository, monkeypatch, tmp_path_factory):
     run_git(git_repository, "update-ref", "refs/remotes/origin/main", "HEAD")
     prepare(git_repository, [], "patch", "", prerelease=True)
     run_git(git_repository, "add", MANIFEST.as_posix())
-    run_git(
-        git_repository,
-        "commit",
-        "-m",
-        "Release v0.2.1rc1\n\nSmartHass-Release: 0.2.1rc1",
-    )
+    run_git(git_repository, "commit", "-m", "Release v0.2.1rc1\n\nSmartHass-Release: 0.2.1rc1")
     run_git(git_repository, "tag", "-a", "v0.2.1rc1", "-m", "Release v0.2.1rc1")
-    candidate = run_git(git_repository, "rev-parse", "HEAD")
-    assert recover(git_repository, "0.2.1rc1") == {
-        "version": "0.2.1rc1",
-        "candidate": candidate,
-    }
-    run_git(git_repository, "checkout", "--orphan", "unrelated")
-    run_git(git_repository, "commit", "--allow-empty", "-m", "Unrelated")
-    run_git(git_repository, "update-ref", "refs/remotes/origin/main", "HEAD")
-    with pytest.raises(subprocess.CalledProcessError):
-        recover(git_repository, "0.2.1rc1")
+    output = tmp_path_factory.mktemp("prerelease-recovery") / "outputs.txt"
+    monkeypatch.setattr(release_module, "ROOT", git_repository)
+    monkeypatch.setattr("sys.argv", ["release.py", "recover", "--version", "0.2.1rc1"])
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    release_module.main()
+    assert "version=0.2.1rc1\n" in output.read_text(encoding="utf-8")
+    assert "prerelease=true\n" in output.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize(
@@ -328,20 +341,25 @@ def test_recovery_of_tag_only_prerelease(git_repository):
     [
         ({"version": "0.2.0"}, {"version": "0.2.2"}, "0.2.1"),
         ({"version": "0.2.1"}, {"version": "0.2.1"}, "0.2.1"),
-        ({"version": "0.2.0", "domain": "x"}, {"version": "0.2.1"}, "0.2.1"),
+        ({"version": "0.2.0", "domain": "sh_entity_status"}, {"version": "0.2.1"}, "0.2.1"),
     ],
 )
-def test_invalid_release_metadata(previous, candidate, version):
+def test_recovery_rejects_invalid_metadata(previous, candidate, version):
     with pytest.raises(ValueError):
         verify_release_metadata(previous, candidate, version)
 
 
-@pytest.mark.parametrize("defect", ["message", "extra-file"])
+@pytest.mark.parametrize("defect", ["message", "extra-file", "other-metadata"])
 def test_recovery_rejects_invalid_release_commits(git_repository, defect):
     prepare(git_repository, [], "patch", "")
     if defect == "extra-file":
-        (git_repository / "README.md").write_text("unexpected", encoding="utf-8")
+        write_file(git_repository, "README.md", "Unexpected release content")
         run_git(git_repository, "add", "README.md")
+    if defect == "other-metadata":
+        manifest_path = git_repository / MANIFEST
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["name"] = "Unexpected rename"
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     run_git(git_repository, "add", MANIFEST.as_posix())
     message = "Unknown commit" if defect == "message" else "SmartHass-Release: 0.2.1"
     run_git(git_repository, "commit", "-m", message)
@@ -349,3 +367,123 @@ def test_recovery_rejects_invalid_release_commits(git_repository, defect):
     run_git(git_repository, "update-ref", "refs/remotes/origin/main", "HEAD")
     with pytest.raises(ValueError):
         recover(git_repository, "0.2.1")
+
+
+def test_cli_outputs_scaffold_status(repository, monkeypatch, capsys):
+    output = repository / "outputs.txt"
+    monkeypatch.setattr(release_module, "ROOT", repository)
+    monkeypatch.setattr("sys.argv", ["release.py", "check"])
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    release_module.main()
+    assert "Scaffold only" in capsys.readouterr().out
+    assert output.read_text(encoding="utf-8") == "integration-ready=false\n"
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["check", "--require-integration"],
+        ["prepare"],
+        ["recover", "--version", "malformed"],
+        ["recover", "--version", "0.2.1rc1", "--prerelease"],
+    ],
+)
+def test_cli_errors_fail_closed(repository, monkeypatch, capsys, arguments):
+    monkeypatch.setattr(release_module, "ROOT", repository)
+    monkeypatch.setattr("sys.argv", ["release.py", *arguments])
+    with pytest.raises(SystemExit) as error:
+        release_module.main()
+    assert error.value.code == 1
+    assert "Release preflight failed" in capsys.readouterr().err
+
+
+def test_cli_prepares_version(git_repository, monkeypatch, tmp_path_factory):
+    releases_path = tmp_path_factory.mktemp("release-input") / "releases.json"
+    releases_path.write_text("[]", encoding="utf-8")
+    output = releases_path.parent / "outputs.txt"
+    monkeypatch.setattr(release_module, "ROOT", git_repository)
+    monkeypatch.setattr("sys.argv", ["release.py", "prepare", "--releases", str(releases_path)])
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    release_module.main()
+    assert output.read_text(encoding="utf-8") == "version=0.2.1\nprerelease=false\n"
+
+
+def test_cli_prepares_prerelease(git_repository, monkeypatch, tmp_path_factory):
+    releases_path = tmp_path_factory.mktemp("prerelease-input") / "releases.json"
+    releases_path.write_text("[]", encoding="utf-8")
+    output = releases_path.parent / "outputs.txt"
+    monkeypatch.setattr(release_module, "ROOT", git_repository)
+    monkeypatch.setattr(
+        "sys.argv", ["release.py", "prepare", "--releases", str(releases_path), "--prerelease"]
+    )
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    release_module.main()
+    assert output.read_text(encoding="utf-8") == "version=0.2.1rc1\nprerelease=true\n"
+
+
+def test_cli_recovers_version(released_repository, monkeypatch, tmp_path_factory):
+    output = tmp_path_factory.mktemp("recovery-output") / "outputs.txt"
+    monkeypatch.setattr(release_module, "ROOT", released_repository)
+    monkeypatch.setattr("sys.argv", ["release.py", "recover", "--version", "0.2.1"])
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    release_module.main()
+    assert "version=0.2.1\n" in output.read_text(encoding="utf-8")
+    assert "candidate=" in output.read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def remote_repository(git_repository, tmp_path_factory):
+    remote = tmp_path_factory.mktemp("remote") / "repository.git"
+    run_git(remote.parent, "init", "--bare", "--initial-branch=main", str(remote))
+    run_git(git_repository, "remote", "add", "origin", str(remote))
+    run_git(git_repository, "push", "-u", "origin", "main")
+    return remote
+
+
+def create_release_commit(root):
+    prepare(root, [], "patch", "")
+    run_git(root, "add", MANIFEST.as_posix())
+    run_git(root, "commit", "-m", "Release v0.2.1\n\nSmartHass-Release: 0.2.1")
+    run_git(root, "tag", "-a", "v0.2.1", "-m", "Release v0.2.1")
+    return run_git(root, "rev-parse", "HEAD")
+
+
+def atomic_push(root):
+    run_git(root, "push", "--atomic", "origin", "HEAD:refs/heads/main", "refs/tags/v0.2.1")
+
+
+def test_atomic_push_publishes_matching_refs(git_repository, remote_repository):
+    candidate = create_release_commit(git_repository)
+    atomic_push(git_repository)
+    assert run_git(remote_repository, "rev-parse", "refs/heads/main") == candidate
+    assert run_git(remote_repository, "rev-parse", "refs/tags/v0.2.1^{commit}") == candidate
+    assert recover(git_repository, "0.2.1")["candidate"] == candidate
+
+
+def test_atomic_push_does_not_push_tag_when_main_advances(
+    git_repository, remote_repository, tmp_path_factory
+):
+    competitor = tmp_path_factory.mktemp("competitor") / "checkout"
+    run_git(competitor.parent, "clone", str(remote_repository), str(competitor))
+    run_git(competitor, "config", "user.name", "Concurrent merge")
+    run_git(competitor, "config", "user.email", "merge@example.invalid")
+    write_file(competitor, "README.md", "Concurrent PR merge")
+    run_git(competitor, "add", "README.md")
+    run_git(competitor, "-c", "commit.gpgsign=false", "commit", "-m", "Merge another PR")
+    run_git(competitor, "push", "origin", "main")
+    remote_main = run_git(remote_repository, "rev-parse", "refs/heads/main")
+    create_release_commit(git_repository)
+    with pytest.raises(subprocess.CalledProcessError):
+        atomic_push(git_repository)
+    assert run_git(remote_repository, "rev-parse", "refs/heads/main") == remote_main
+    assert run_git(git_repository, "ls-remote", "origin", "refs/tags/v0.2.1") == ""
+
+
+def test_atomic_push_does_not_push_main_when_tag_conflicts(git_repository, remote_repository):
+    remote_main = run_git(remote_repository, "rev-parse", "refs/heads/main")
+    run_git(remote_repository, "tag", "v0.2.1", remote_main)
+    create_release_commit(git_repository)
+    with pytest.raises(subprocess.CalledProcessError):
+        atomic_push(git_repository)
+    assert run_git(remote_repository, "rev-parse", "refs/heads/main") == remote_main
+    assert run_git(remote_repository, "rev-parse", "refs/tags/v0.2.1^{commit}") == remote_main

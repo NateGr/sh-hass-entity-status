@@ -21,7 +21,7 @@ Use `dry-run` to validate without pushing or publishing. If publishing fails aft
 
 To test a change before merging, run **Actions → Release → Run workflow**, select the feature branch, and enable `dry-run`. Enable `prerelease` to test prerelease version selection, or leave it off to test stable version selection. The branch dry run creates and validates a local candidate using the same release script and validation action, but it does not use the protected release environment or its App credentials, push a commit or tag, or publish a release. The candidate is based on the selected branch, not `main`; the actual push, token, and publication paths are not tested. Non-dry runs and recovery remain restricted to `main`.
 
-The readiness check verifies integration files, metadata, the minimum Home Assistant version in `hacs.json`, a pinned Home Assistant test plugin, and integration tests. Run `python scripts/release.py check` locally. Private repositories may run dry runs, but production releases require public visibility and HACS validation.
+The readiness check verifies integration files, metadata, the minimum Home Assistant version in `hacs.json`, a `homeassistant` pin in `requirements_test.txt` that equals that minimum, and integration tests. Readiness is enabled by `tool.smarthass.integration-ready = true` in `pyproject.toml`; releases run `python scripts/release.py check --require-integration`. Run `python scripts/release.py check` locally. Private repositories may run dry runs, but production releases require public visibility and HACS validation.
 
 ### Home Assistant compatibility
 

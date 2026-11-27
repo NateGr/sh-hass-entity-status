@@ -1,5 +1,4 @@
 name: Release
-
 on:
   workflow_dispatch:
     inputs:
@@ -22,14 +21,11 @@ on:
       recover-version:
         description: Recover an existing release tag (e.g. 1.2.3 or 1.2.3rc1)
         type: string
-
 permissions:
   contents: read
-
 concurrency:
   group: release
   cancel-in-progress: false
-
 jobs:
   check-context:
     name: Check release request
@@ -40,10 +36,10 @@ jobs:
         env:
           RELEASE_REF: ${{ github.ref }}
           REPOSITORY: ${{ github.repository }}
-          DRY_RUN: ${{ inputs.dry-run }}
-          RECOVER_VERSION: ${{ inputs.recover-version }}
-          VERSION: ${{ inputs.version }}
           PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          VERSION: ${{ inputs.version }}
+          RECOVER_VERSION: ${{ inputs.recover-version }}
         run: |
           [[ "$REPOSITORY" == "NateGr/sh-hass-entity-status" ]] || { echo "Release is restricted to the upstream repository."; exit 1; }
           if [[ "$RELEASE_REF" != "refs/heads/main" ]]; then
@@ -58,7 +54,6 @@ jobs:
             echo "Choose a new version or recovery, not both."
             exit 1
           fi
-
   branch-dry-run:
     name: Validate branch release candidate
     needs: check-context
@@ -67,17 +62,15 @@ jobs:
     timeout-minutes: 40
     steps:
       - name: Check out branch commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      - name: Set up release Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.14.2'
-
+          python-version: "3.14.2"
       - name: Select candidate version
         id: version
         env:
@@ -93,7 +86,6 @@ jobs:
             args+=(--prerelease)
           fi
           python scripts/release.py "${args[@]}"
-
       - name: Create local release candidate
         id: candidate
         env:
@@ -104,10 +96,10 @@ jobs:
           git add custom_components/sh_entity_status/manifest.json
           git -c commit.gpgsign=false commit -m "Release v$VERSION" -m "SmartHass-Release: $VERSION"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
       - name: Validate exact release candidate
         uses: ./.github/actions/validate
-
+        with:
+          require-integration: "true"
       - name: Verify and report candidate
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -125,7 +117,6 @@ jobs:
             echo "Prerelease: $PRERELEASE"
             echo "No commit, tag, or release was published."
           } >> "$GITHUB_STEP_SUMMARY"
-
   prepare:
     name: Validate and tag
     needs: check-context
@@ -135,39 +126,43 @@ jobs:
     environment: release
     outputs:
       version: ${{ steps.version.outputs.version }}
-      prerelease: ${{ steps.version.outputs.prerelease }}
       candidate: ${{ steps.candidate.outputs.sha }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - name: Check release context
         env:
           RELEASE_REF: ${{ github.ref }}
           REPOSITORY: ${{ github.repository }}
+          PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
+          DRY_RUN: ${{ inputs.dry-run }}
           VERSION: ${{ inputs.version }}
           RECOVER_VERSION: ${{ inputs.recover-version }}
         run: |
           [[ "$RELEASE_REF" == "refs/heads/main" ]] || { echo "Release must run from main."; exit 1; }
           [[ "$REPOSITORY" == "NateGr/sh-hass-entity-status" ]] || { echo "Release is restricted to the upstream repository."; exit 1; }
+          if [[ "$PRIVATE_REPOSITORY" == "true" && "$DRY_RUN" != "true" ]]; then
+            echo "Production releases require a public repository and HACS validation."
+            exit 1
+          fi
           if [[ -n "$VERSION" && -n "$RECOVER_VERSION" ]]; then
             echo "Choose a new version or recovery, not both."
             exit 1
           fi
-
       - name: Check out frozen main commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      - name: Set up release Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.14.2'
-
+          python-version: "3.14.2"
+      - name: Require imported integration
+        run: python scripts/release.py check --require-integration
       - name: Freeze base commit
         id: base
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
       - name: Select version or recover existing tag
         id: version
         env:
@@ -188,7 +183,6 @@ jobs:
             fi
             python scripts/release.py "${args[@]}"
           fi
-
       - name: Create local release commit or check out recovery commit
         id: candidate
         env:
@@ -205,10 +199,10 @@ jobs:
             git -c commit.gpgsign=false commit -m "Release v$VERSION" -m "SmartHass-Release: $VERSION"
           fi
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
       - name: Validate exact release candidate
         uses: ./.github/actions/validate
-
+        with:
+          require-integration: "true"
       - name: Verify candidate was not modified by validation
         env:
           CANDIDATE: ${{ steps.candidate.outputs.sha }}
@@ -217,7 +211,6 @@ jobs:
           git diff --exit-code
           git diff --cached --exit-code
           [[ -z "$(git ls-files --others --exclude-standard)" ]] || { echo "Unexpected untracked files after validation."; exit 1; }
-
       - name: Create narrowly scoped App token
         if: ${{ !inputs.dry-run && inputs.recover-version == '' }}
         id: app
@@ -228,7 +221,6 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: sh-hass-entity-status
           permission-contents: write
-
       - name: Push validated release
         if: ${{ !inputs.dry-run && inputs.recover-version == '' }}
         env:
@@ -250,7 +242,6 @@ jobs:
           else
             git -c credential.helper= -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $authorization" push --atomic origin "HEAD:refs/heads/main" "refs/tags/v$VERSION"
           fi
-
       - name: Report validated candidate
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -264,12 +255,11 @@ jobs:
             echo "Dry run: $DRY_RUN"
             echo "Prerelease: $PRERELEASE"
           } >> "$GITHUB_STEP_SUMMARY"
-
   publish:
     name: Publish
     needs: prepare
     if: ${{ !inputs.dry-run }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: release
     permissions:
